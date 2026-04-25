@@ -73,15 +73,15 @@ export function ExpensePieChart({ expensesByCategory, currency, locale = 'en-US'
         <CardTitle className="text-base">{t('dashboard.expenseBreakdown')}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-64">
+        <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+            <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Pie
                 data={chartData}
                 cx="50%"
-                cy="50%"
+                cy="45%"
                 innerRadius={50}
-                outerRadius={90}
+                outerRadius={85}
                 paddingAngle={2}
                 dataKey="value"
                 stroke="none"

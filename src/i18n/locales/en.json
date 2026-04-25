@@ -9,6 +9,7 @@
     "settings": "Settings",
     "categories": "Categories",
     "accounts": "Accounts",
+    "transactions": "Transactions",
     "logout": "Log Out",
     "household": "Household",
     "viewToggle": "View"
@@ -59,7 +60,14 @@
     "manual": "Manual",
     "source": "Source",
     "confirmDelete": "Are you sure you want to delete this transaction?",
-    "noDescription": "No description"
+    "noDescription": "No description",
+    "list": "Transactions",
+    "all": "All",
+    "filterByCategory": "Filter by category",
+    "filterByType": "Filter by type",
+    "searchPlaceholder": "Search transactions...",
+    "noResults": "No transactions match your filters",
+    "showing": "Showing {{count}} transactions"
   },
   "categories": {
     "title": "Categories",

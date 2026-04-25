@@ -24,16 +24,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setLoading(false)
-      }
-    })
+    // Safety timeout: if loading doesn't resolve in 10s, force it off
+    const timeout = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) {
+          console.warn('Auth loading timeout — forcing load complete')
+          return false
+        }
+        return prev
+      })
+    }, 10_000)
 
+    // Use onAuthStateChange exclusively — it fires INITIAL_SESSION
+    // synchronously on subscribe, avoiding the getSession race condition
+    // that occurs in React 19 Strict Mode (effect runs twice).
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session)
@@ -44,10 +48,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null)
           setLoading(false)
         }
+        clearTimeout(timeout)
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   async function fetchProfile(userId: string) {

@@ -1,35 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
 
 @theme {
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   
   /* Colors - Fintech Dark Theme */
   --color-background: #09090B;
   --color-foreground: #FAFAFA;
   
-  --color-card: #18181B;
+  --color-card: #111113;
   --color-card-foreground: #FAFAFA;
   
-  --color-popover: #18181B;
+  --color-popover: #111113;
   --color-popover-foreground: #FAFAFA;
   
-  --color-primary: #2563EB;
+  --color-primary: #3B82F6;
   --color-primary-foreground: #FFFFFF;
   
-  --color-secondary: #27272A;
+  --color-secondary: #1C1C1F;
   --color-secondary-foreground: #FAFAFA;
   
-  --color-muted: #27272A;
+  --color-muted: #1C1C1F;
   --color-muted-foreground: #A1A1AA;
   
-  --color-accent: #27272A;
+  --color-accent: #1C1C1F;
   --color-accent-foreground: #FAFAFA;
   
   --color-destructive: #EF4444;
   --color-destructive-foreground: #FAFAFA;
   
-  --color-success: #22C55E;
+  --color-success: #10B981;
   --color-success-foreground: #FFFFFF;
   
   --color-warning: #F59E0B;
@@ -37,59 +37,64 @@
   
   --color-border: #27272A;
   --color-input: #27272A;
-  --color-ring: #2563EB;
+  --color-ring: #3B82F6;
   
-  --color-chart-1: #2563EB;
-  --color-chart-2: #7C3AED;
+  --color-chart-1: #3B82F6;
+  --color-chart-2: #8B5CF6;
   --color-chart-3: #EC4899;
   --color-chart-4: #F59E0B;
-  --color-chart-5: #22C55E;
+  --color-chart-5: #10B981;
   --color-chart-6: #06B6D4;
   --color-chart-7: #F97316;
-  --color-chart-8: #8B5CF6;
+  --color-chart-8: #A78BFA;
   
   /* Sidebar */
-  --color-sidebar: #0A0A0C;
+  --color-sidebar: #0A0A0D;
   --color-sidebar-foreground: #FAFAFA;
-  --color-sidebar-primary: #2563EB;
+  --color-sidebar-primary: #3B82F6;
   --color-sidebar-primary-foreground: #FFFFFF;
-  --color-sidebar-accent: #27272A;
+  --color-sidebar-accent: #1C1C1F;
   --color-sidebar-accent-foreground: #FAFAFA;
   --color-sidebar-border: #27272A;
-  --color-sidebar-ring: #2563EB;
+  --color-sidebar-ring: #3B82F6;
   
   /* Radius */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
   
   /* Animations */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.4s ease-out;
+  --animate-slide-up: slide-up 0.4s ease-out;
+  --animate-slide-down: slide-down 0.3s ease-out;
+  --animate-scale-in: scale-in 0.3s ease-out;
+  --animate-shimmer: shimmer 2s infinite linear;
 }
 
 /* Light theme override */
 .light {
-  --color-background: #FAFAFA;
-  --color-foreground: #09090B;
+  --color-background: #F8FAFC;
+  --color-foreground: #0F172A;
   --color-card: #FFFFFF;
-  --color-card-foreground: #09090B;
+  --color-card-foreground: #0F172A;
   --color-popover: #FFFFFF;
-  --color-popover-foreground: #09090B;
-  --color-secondary: #F4F4F5;
-  --color-secondary-foreground: #18181B;
-  --color-muted: #F4F4F5;
-  --color-muted-foreground: #71717A;
-  --color-accent: #F4F4F5;
-  --color-accent-foreground: #18181B;
-  --color-border: #E4E4E7;
-  --color-input: #E4E4E7;
-  --color-sidebar: #F4F4F5;
-  --color-sidebar-foreground: #09090B;
-  --color-sidebar-border: #E4E4E7;
-  --color-sidebar-accent: #E4E4E7;
-  --color-sidebar-accent-foreground: #18181B;
+  --color-popover-foreground: #0F172A;
+  --color-secondary: #F1F5F9;
+  --color-secondary-foreground: #0F172A;
+  --color-muted: #F1F5F9;
+  --color-muted-foreground: #64748B;
+  --color-accent: #F1F5F9;
+  --color-accent-foreground: #0F172A;
+  --color-border: #CBD5E1;
+  --color-input: #CBD5E1;
+  --color-sidebar: #F8FAFC;
+  --color-sidebar-foreground: #0F172A;
+  --color-sidebar-border: #CBD5E1;
+  --color-sidebar-accent: #E2E8F0;
+  --color-sidebar-accent-foreground: #0F172A;
 }
 
 @keyframes accordion-down {
@@ -100,6 +105,47 @@
 @keyframes accordion-up {
   from { height: var(--radix-accordion-content-height); }
   to { height: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  50% { box-shadow: 0 0 20px 4px rgba(59, 130, 246, 0.15); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
 }
 
 /* Base styles */
@@ -118,7 +164,203 @@ body {
   outline-offset: 2px;
 }
 
-/* Reduced motion */
+/* ============================================================
+   Form Input Styling — Clear boundaries in both light & dark
+   ============================================================ */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea,
+select {
+  background-color: var(--color-muted);
+  border: 1px solid var(--color-border);
+  color: var(--color-foreground);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--color-ring);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.light input[type="text"],
+.light input[type="email"],
+.light input[type="password"],
+.light input[type="number"],
+.light input[type="date"],
+.light input[type="search"],
+.light input[type="tel"],
+.light input[type="url"],
+.light textarea,
+.light select {
+  background-color: #FFFFFF;
+  border-color: #CBD5E1;
+}
+
+.light input:focus,
+.light textarea:focus,
+.light select:focus {
+  border-color: var(--color-ring);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+/* Date input calendar icon color fix */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+.light input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  cursor: pointer;
+}
+
+/* Select trigger styling */
+[data-slot="select-trigger"] {
+  background-color: var(--color-muted) !important;
+  border: 1px solid var(--color-border) !important;
+}
+
+.light [data-slot="select-trigger"] {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* ============================================================
+   Glass card effect
+   ============================================================ */
+.glass-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.light .glass-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 4px 24px -4px rgba(0,0,0,0.08);
+}
+
+/* ============================================================
+   Gradient text utility
+   ============================================================ */
+.gradient-text {
+  background: linear-gradient(135deg, #3B82F6, #8B5CF6, #EC4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================
+   Card hover lift effect
+   ============================================================ */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px -5px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.15);
+}
+
+.light .card-hover:hover {
+  box-shadow: 0 8px 30px -5px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* ============================================================
+   Skeleton loading animation
+   ============================================================ */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-muted) 25%, rgba(255,255,255,0.05) 50%, var(--color-muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+  border-radius: var(--radius-md);
+}
+
+.light .skeleton {
+  background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
+  background-size: 200% 100%;
+}
+
+/* ============================================================
+   Stagger animation children
+   ============================================================ */
+.stagger-children > * {
+  animation: slide-up 0.4s ease-out both;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+
+/* ============================================================
+   Modern row hover
+   ============================================================ */
+.row-hover {
+  transition: background-color 0.15s ease;
+}
+
+.row-hover:hover {
+  background-color: rgba(59, 130, 246, 0.04);
+}
+
+/* ============================================================
+   Gradient border card
+   ============================================================ */
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.3), rgba(236, 72, 153, 0.1));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Reduced motion
+   ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

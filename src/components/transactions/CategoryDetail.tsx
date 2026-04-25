@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronRight, Trash2, Edit } from 'lucide-react'
+import { ChevronRight, Trash2, Edit } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -22,31 +22,32 @@ export function CategoryDetail({ category, transactions, total, currency, locale
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="border-b border-border last:border-b-0">
+    <div className="border-b border-border/50 last:border-b-0">
       <button
         type="button"
-        className="flex w-full items-center justify-between px-4 py-3 transition-colors duration-200 hover:bg-muted/50 cursor-pointer"
+        className="flex w-full items-center justify-between px-4 py-3 transition-all duration-200 hover:bg-muted/40 cursor-pointer group"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
       >
         <div className="flex items-center gap-2">
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
+          <div className={cn(
+            "transition-transform duration-200",
+            expanded && "rotate-90"
+          )}>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
+          </div>
           <span className="text-sm font-medium">{category.name}</span>
           {transactions.length > 0 && (
-            <span className="text-xs text-muted-foreground">({transactions.length})</span>
+            <span className="text-xs text-muted-foreground/60 tabular-nums">({transactions.length})</span>
           )}
         </div>
-        <span className="text-sm font-semibold">
+        <span className="text-sm font-semibold tabular-nums">
           {formatCurrency(total, currency, locale)}
         </span>
       </button>
 
       {expanded && transactions.length > 0 && (
-        <div className="bg-muted/20 px-4 pb-3">
+        <div className="bg-muted/10 px-4 pb-3 animate-slide-down">
           {transactions.map(tx => (
             <div
               key={tx.id}

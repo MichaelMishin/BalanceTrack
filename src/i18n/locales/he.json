@@ -9,6 +9,7 @@
     "settings": "הגדרות",
     "categories": "קטגוריות",
     "accounts": "חשבונות",
+    "transactions": "עסקאות",
     "logout": "התנתק",
     "household": "משק בית",
     "viewToggle": "תצוגה"
@@ -59,7 +60,14 @@
     "manual": "ידני",
     "source": "מקור",
     "confirmDelete": "האם אתה בטוח שברצונך למחוק עסקה זו?",
-    "noDescription": "ללא תיאור"
+    "noDescription": "ללא תיאור",
+    "list": "עסקאות",
+    "all": "הכל",
+    "filterByCategory": "סנן לפי קטגוריה",
+    "filterByType": "סנן לפי סוג",
+    "searchPlaceholder": "חפש עסקאות...",
+    "noResults": "אין עסקאות התואמות לסינון",
+    "showing": "מציג {{count}} עסקאות"
   },
   "categories": {
     "title": "קטגוריות",

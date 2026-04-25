@@ -27,6 +27,7 @@ interface HouseholdContextType {
   setTimeframe: (tf: TimeFrame) => void
   refreshCategories: () => Promise<void>
   refreshAccounts: () => Promise<void>
+  updateHouseholdCurrency: (currency: string) => Promise<void>
 }
 
 const HouseholdContext = createContext<HouseholdContextType | undefined>(undefined)
@@ -75,6 +76,8 @@ function shiftPeriod(current: PeriodRange, direction: 'prev' | 'next', timeframe
     }
   }
 }
+
+
 
 export function HouseholdProvider({ children }: { children: ReactNode }) {
   const { user, profile } = useAuth()
@@ -136,7 +139,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       supabase
         .from('categories')
         .select('*')
-        .or(`household_id.eq.${memberData.household_id},household_id.is.null`)
+        .eq('household_id', memberData.household_id)
         .eq('is_hidden', false)
         .order('sort_order'),
       supabase
@@ -156,7 +159,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase
       .from('categories')
       .select('*')
-      .or(`household_id.eq.${household.id},household_id.is.null`)
+      .eq('household_id', household.id)
       .eq('is_hidden', false)
       .order('sort_order')
     setCategories(data ?? [])
@@ -188,6 +191,19 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     setPeriod(computePeriod(new Date(), tf))
   }, [])
 
+  const updateHouseholdCurrency = useCallback(async (currency: string) => {
+    if (!household) return
+    const { error } = await supabase
+      .from('households')
+      .update({ default_currency: currency })
+      .eq('id', household.id)
+    if (error) {
+      console.error('Failed to update household currency:', error)
+      throw error
+    }
+    setHousehold(prev => prev ? { ...prev, default_currency: currency } : null)
+  }, [household])
+
   return (
     <HouseholdContext.Provider
       value={{
@@ -204,6 +220,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         setTimeframe,
         refreshCategories,
         refreshAccounts,
+        updateHouseholdCurrency,
       }}
     >
       {children}

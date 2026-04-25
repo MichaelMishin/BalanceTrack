@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHousehold } from '@/stores/household-context'
 import { supabase } from '@/lib/supabase'
@@ -9,23 +9,40 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Plus, Eye, EyeOff, GripVertical } from 'lucide-react'
-import type { CategoryType } from '@/types/database'
+import { cn } from '@/lib/utils'
+import type { Category, CategoryType } from '@/types/database'
 
 export function CategoriesPage() {
   const { t } = useTranslation()
-  const { household, categories, refreshCategories } = useHousehold()
+  const { household, refreshCategories } = useHousehold()
 
   const [newName, setNewName] = useState('')
   const [newType, setNewType] = useState<CategoryType>('expense')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [allCategories, setAllCategories] = useState<Category[]>([])
 
-  const incomeCategories = categories.filter(c => c.type === 'income')
-  const expenseCategories = categories.filter(c => c.type === 'expense')
+  // Fetch ALL categories including hidden ones for management
+  const fetchAllCategories = useCallback(async () => {
+    if (!household) return
+    const { data } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('household_id', household.id)
+      .order('sort_order')
+    setAllCategories(data ?? [])
+  }, [household])
+
+  useEffect(() => {
+    fetchAllCategories()
+  }, [fetchAllCategories])
+
+  const incomeCategories = allCategories.filter(c => c.type === 'income')
+  const expenseCategories = allCategories.filter(c => c.type === 'expense')
 
   async function handleAdd() {
     if (!household || !newName.trim()) return
-    const maxOrder = categories.reduce((max, c) => Math.max(max, c.sort_order), 0)
+    const maxOrder = allCategories.reduce((max, c) => Math.max(max, c.sort_order), 0)
     await supabase.from('categories').insert({
       household_id: household.id,
       name: newName.trim(),
@@ -35,6 +52,7 @@ export function CategoriesPage() {
     })
     setNewName('')
     refreshCategories()
+    fetchAllCategories()
   }
 
   async function handleRename(id: string) {
@@ -42,14 +60,16 @@ export function CategoriesPage() {
     await supabase.from('categories').update({ name: editName.trim() }).eq('id', id)
     setEditingId(null)
     refreshCategories()
+    fetchAllCategories()
   }
 
   async function handleToggleHidden(id: string, currentlyHidden: boolean) {
     await supabase.from('categories').update({ is_hidden: !currentlyHidden }).eq('id', id)
     refreshCategories()
+    fetchAllCategories()
   }
 
-  function renderCategoryList(cats: typeof categories, title: string) {
+  function renderCategoryList(cats: Category[], title: string) {
     return (
       <Card>
         <CardHeader>
@@ -58,7 +78,7 @@ export function CategoriesPage() {
         <CardContent className="p-0">
           <div className="divide-y divide-border">
             {cats.map(cat => (
-              <div key={cat.id} className="flex items-center gap-3 px-4 py-3">
+              <div key={cat.id} className={cn("flex items-center gap-3 px-4 py-3", cat.is_hidden && "opacity-50")}>
                 <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
 
                 {editingId === cat.id ? (
@@ -86,6 +106,12 @@ export function CategoriesPage() {
                       {cat.name}
                     </span>
 
+                    {cat.is_hidden && (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        {t('categories.hidden', 'Hidden')}
+                      </Badge>
+                    )}
+
                     {cat.is_system && (
                       <Badge variant="secondary" className="text-xs">
                         {t('categories.system')}
@@ -112,8 +138,8 @@ export function CategoriesPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">{t('categories.title')}</h1>
+    <div className="max-w-2xl space-y-6 animate-fade-in">
+      <h1 className="text-2xl font-bold tracking-tight">{t('categories.title')}</h1>
 
       {/* Add new category */}
       <Card>

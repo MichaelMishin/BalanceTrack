@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHousehold } from '@/stores/household-context'
 import { useAuth } from '@/stores/auth-context'
@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 import type { TransactionInsert, CategoryType } from '@/types/database'
 
 interface Props {
@@ -36,16 +37,42 @@ export function TransactionForm({ open, onClose, onSave, editData }: Props) {
   const { household, categories, accounts } = useHousehold()
   const { user } = useAuth()
 
-  const [type, setType] = useState<CategoryType>(editData ? (categories.find(c => c.id === editData.category_id)?.type ?? 'expense') : 'expense')
-  const [categoryId, setCategoryId] = useState(editData?.category_id ?? '')
-  const [amount, setAmount] = useState(editData?.amount?.toString() ?? '')
-  const [currency, setCurrency] = useState(editData?.currency ?? household?.default_currency ?? 'ILS')
-  const [description, setDescription] = useState(editData?.description ?? '')
-  const [date, setDate] = useState(editData?.transaction_date ?? new Date().toISOString().split('T')[0])
-  const [accountId, setAccountId] = useState(editData?.financial_account_id ?? '')
+  const [type, setType] = useState<CategoryType>('expense')
+  const [categoryId, setCategoryId] = useState('')
+  const [amount, setAmount] = useState('')
+  const [currency, setCurrency] = useState(household?.default_currency ?? 'ILS')
+  const [description, setDescription] = useState('')
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [accountId, setAccountId] = useState('_none')
   const [convertedPreview, setConvertedPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Reset form state when dialog opens or editData changes
+  useEffect(() => {
+    if (!open) return
+    if (editData) {
+      const cat = categories.find(c => c.id === editData.category_id)
+      setType(cat?.type ?? 'expense')
+      setCategoryId(editData.category_id)
+      setAmount(editData.amount.toString())
+      setCurrency(editData.currency)
+      setDescription(editData.description ?? '')
+      setDate(editData.transaction_date)
+      setAccountId(editData.financial_account_id ?? '_none')
+    } else {
+      setType('expense')
+      setCategoryId('')
+      setAmount('')
+      setCurrency(household?.default_currency ?? 'ILS')
+      setDescription('')
+      setDate(new Date().toISOString().split('T')[0])
+      setAccountId('_none')
+    }
+    setConvertedPreview(null)
+    setSubmitting(false)
+    setError(null)
+  }, [open, editData, categories, household?.default_currency])
 
   const filteredCategories = categories.filter(c => c.type === type)
 
@@ -84,7 +111,7 @@ export function TransactionForm({ open, onClose, onSave, editData }: Props) {
       const tx: TransactionInsert = {
         household_id: household.id,
         category_id: categoryId,
-        financial_account_id: accountId || null,
+        financial_account_id: accountId === '_none' ? null : accountId,
         entered_by: user.id,
         amount: parsedAmount,
         currency,
@@ -120,7 +147,10 @@ export function TransactionForm({ open, onClose, onSave, editData }: Props) {
             <Button
               type="button"
               variant={type === 'income' ? 'default' : 'outline'}
-              className="flex-1 cursor-pointer"
+              className={cn(
+                'flex-1 cursor-pointer',
+                type === 'income' && 'bg-success hover:bg-success/90 text-success-foreground'
+              )}
               onClick={() => { setType('income'); setCategoryId('') }}
             >
               {t('transactions.income')}
@@ -128,7 +158,10 @@ export function TransactionForm({ open, onClose, onSave, editData }: Props) {
             <Button
               type="button"
               variant={type === 'expense' ? 'default' : 'outline'}
-              className="flex-1 cursor-pointer"
+              className={cn(
+                'flex-1 cursor-pointer',
+                type === 'expense' && 'bg-destructive hover:bg-destructive/90 text-white'
+              )}
               onClick={() => { setType('expense'); setCategoryId('') }}
             >
               {t('transactions.expense')}
@@ -219,7 +252,7 @@ export function TransactionForm({ open, onClose, onSave, editData }: Props) {
                   <SelectValue placeholder={t('transactions.account')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" className="cursor-pointer">—</SelectItem>
+                  <SelectItem value="_none" className="cursor-pointer">—</SelectItem>
                   {accounts.map(a => (
                     <SelectItem key={a.id} value={a.id} className="cursor-pointer">
                       {a.name}

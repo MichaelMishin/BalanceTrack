@@ -21,11 +21,11 @@ export function SavingsGauge({ income, expenses, savingsTargetPct }: Props) {
   const angle = ((clampedPct + 100) / 200) * 180
 
   return (
-    <Card>
+    <Card className="card-hover overflow-hidden">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">{t('dashboard.budgetHealth')}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.budgetHealth')}</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col items-center">
+      <CardContent className="flex flex-col items-center pb-4">
         {/* Gauge SVG */}
         <div className="relative h-24 w-48">
           <svg viewBox="0 0 200 110" className="w-full h-full">

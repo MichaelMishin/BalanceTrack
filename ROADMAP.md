@@ -30,17 +30,17 @@
 - [x] Savings/period snapshot hooks
 
 ## Phase 2: Polish & Testing (NEXT)
-- [ ] Clean up unused Vite template files (App.css, assets/)
-- [ ] Fix TypeScript strict-mode warnings
-- [ ] Add loading skeletons for all data-fetching pages
-- [ ] Add empty-state illustrations for zero-data scenarios
-- [ ] Transaction list view with filters (date range, category, type)
+- [x] Clean up unused Vite template files (App.css, assets/)
+- [x] Fix TypeScript strict-mode warnings
+- [x] Add loading skeletons for all data-fetching pages
+- [x] Add empty-state illustrations for zero-data scenarios
+- [x] End-to-end tests (Playwright)
+- [x] Transaction list view with filters (date range, category, type)
 - [ ] Household invite/join flow (invite by email, accept invite)
 - [ ] Period snapshot auto-computation (daily cron or on-demand)
 - [ ] Recurring transaction generation (Edge Function or pg_cron)
 - [ ] Paycheck estimation from historical data
-- [ ] End-to-end tests (Playwright)
-- [ ] Unit tests for hooks and utility functions
+- [x] Unit tests for hooks and utility functions
 
 ## Phase 3: Advanced Features
 - [ ] Data export (CSV/PDF per period)

@@ -1,21 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/stores/auth-context'
 import { useHousehold } from '@/stores/household-context'
-import { supabase } from '@/lib/supabase'
 import { COMMON_CURRENCIES } from '@/lib/currency'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import type { TimeFrame } from '@/types/database'
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation()
   const { profile, updateProfile } = useAuth()
-  const { household, accounts, refreshAccounts } = useHousehold()
+  const { household, updateHouseholdCurrency } = useHousehold()
 
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
   const [currency, setCurrency] = useState(profile?.preferred_currency ?? 'ILS')
@@ -23,10 +21,15 @@ export function SettingsPage() {
   const [savingsTarget, setSavingsTarget] = useState(profile?.savings_target_pct?.toString() ?? '20')
   const [locale, setLocale] = useState(profile?.locale ?? 'en')
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
-  // Account form
-  const [accountName, setAccountName] = useState('')
-  const [accountType, setAccountType] = useState<'checking' | 'savings' | 'credit_card' | 'other'>('checking')
+  // Auto-clear saved indicator
+  useEffect(() => {
+    if (saved) {
+      const timer = setTimeout(() => setSaved(false), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [saved])
 
   async function handleSaveProfile() {
     setSaving(true)
@@ -38,42 +41,29 @@ export function SettingsPage() {
         savings_target_pct: parseFloat(savingsTarget),
         locale,
       })
+      // Sync household currency
+      if (household && currency !== household.default_currency) {
+        await updateHouseholdCurrency(currency)
+      }
       // Sync i18n
       i18n.changeLanguage(locale)
       document.documentElement.dir = locale === 'he' ? 'rtl' : 'ltr'
       document.documentElement.lang = locale
+      setSaved(true)
     } catch (err) {
       console.error(err)
     }
     setSaving(false)
   }
 
-  async function handleAddAccount() {
-    if (!household || !profile) return
-    await supabase.from('financial_accounts').insert({
-      household_id: household.id,
-      owner_id: profile.id,
-      name: accountName,
-      type: accountType,
-      currency,
-    })
-    setAccountName('')
-    refreshAccounts()
-  }
-
-  async function handleDeleteAccount(id: string) {
-    await supabase.from('financial_accounts').delete().eq('id', id)
-    refreshAccounts()
-  }
-
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
+    <div className="max-w-2xl space-y-6 animate-fade-in">
+      <h1 className="text-2xl font-bold tracking-tight">{t('settings.title')}</h1>
 
       {/* Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings.profile')}</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b border-border/50">
+          <CardTitle className="text-base font-semibold">{t('settings.profile')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -139,64 +129,15 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <Button onClick={handleSaveProfile} disabled={saving} className="cursor-pointer">
-            {saving ? t('common.loading') : t('common.save')}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Financial Accounts */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings.financialAccounts')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {accounts.map(account => (
-            <div key={account.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-              <div>
-                <p className="text-sm font-medium">{account.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{account.type} • {account.currency}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive cursor-pointer"
-                onClick={() => handleDeleteAccount(account.id)}
-              >
-                {t('common.delete')}
-              </Button>
-            </div>
-          ))}
-
-          <Separator />
-
-          <div className="grid grid-cols-3 gap-2">
-            <Input
-              placeholder={t('settings.addAccount')}
-              value={accountName}
-              onChange={e => setAccountName(e.target.value)}
-              className="col-span-1"
-            />
-            <Select value={accountType} onValueChange={(v) => setAccountType(v as typeof accountType)}>
-              <SelectTrigger className="cursor-pointer">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="checking" className="cursor-pointer">Checking</SelectItem>
-                <SelectItem value="savings" className="cursor-pointer">Savings</SelectItem>
-                <SelectItem value="credit_card" className="cursor-pointer">Credit Card</SelectItem>
-                <SelectItem value="other" className="cursor-pointer">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={handleAddAccount} disabled={!accountName} className="cursor-pointer">
-              {t('common.add')}
+          <div className="flex items-center gap-3">
+            <Button onClick={handleSaveProfile} disabled={saving} className="cursor-pointer">
+              {saving ? t('common.loading') : t('common.save')}
             </Button>
-          </div>
-
-          <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-            {t('settings.connectBank')}
+            {saved && (
+              <span className="text-sm text-green-500 animate-fade-in">
+                {t('settings.saved', 'Saved!')}
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>

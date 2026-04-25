@@ -8,13 +8,16 @@ import { useSavings } from '@/hooks/use-savings'
 import { useInsights } from '@/hooks/use-insights'
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/glass-card'
+import { StatCard } from '@/components/ui/stat-card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ExpensePieChart } from '@/components/charts/ExpensePieChart'
 import { SavingsGauge } from '@/components/charts/SavingsGauge'
 import { CategoryDetail } from '@/components/transactions/CategoryDetail'
 import { TransactionForm } from '@/components/transactions/TransactionForm'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Card } from '@/components/ui/card'
 import type { Transaction, TransactionInsert } from '@/types/database'
 
 export function Dashboard() {
@@ -37,6 +40,7 @@ export function Dashboard() {
 
   const [formOpen, setFormOpen] = useState(false)
   const [editTx, setEditTx] = useState<Transaction | null>(null)
+  const [deleteTx, setDeleteTx] = useState<Transaction | null>(null)
 
   const currency = household?.default_currency ?? 'ILS'
   const locale = profile?.locale === 'he' ? 'he-IL' : 'en-US'
@@ -56,9 +60,7 @@ export function Dashboard() {
   }
 
   async function handleDelete(tx: Transaction) {
-    if (window.confirm(t('transactions.confirmDelete'))) {
-      await deleteTransaction(tx.id)
-    }
+    setDeleteTx(tx)
   }
 
   if (loading) {
@@ -78,51 +80,21 @@ export function Dashboard() {
     <div className="space-y-6 animate-fade-in">
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
-        {/* Net This Period */}
-        <Card className="card-hover overflow-hidden relative">
-          <div className={`absolute inset-0 opacity-5 ${netSavings >= 0 ? 'bg-gradient-to-br from-success to-transparent' : 'bg-gradient-to-br from-destructive to-transparent'}`} />
-          <CardHeader className="flex flex-row items-center justify-between pb-2 relative">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t('dashboard.netThisPeriod')}
-            </CardTitle>
-            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${netSavings >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
-              {netSavings >= 0 ? (
-                <ArrowUpRight className="h-4 w-4 text-success" />
-              ) : (
-                <ArrowDownRight className="h-4 w-4 text-destructive" />
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <p className={`text-2xl font-bold tracking-tight ${netSavings >= 0 ? 'text-success' : 'text-destructive'}`}>
-              {formatCurrency(netSavings, currency, locale)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {formatCurrency(totalIncome, currency, locale)} in &middot; {formatCurrency(totalExpenses, currency, locale)} out
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title={t('dashboard.netThisPeriod')}
+          value={formatCurrency(netSavings, currency, locale)}
+          icon={netSavings >= 0 ? ArrowUpRight : ArrowDownRight}
+          colorScheme={netSavings >= 0 ? 'success' : 'destructive'}
+          subtitle={`${formatCurrency(totalIncome, currency, locale)} in · ${formatCurrency(totalExpenses, currency, locale)} out`}
+        />
 
-        {/* Cumulative Savings */}
-        <Card className="card-hover overflow-hidden relative">
-          <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-primary to-transparent" />
-          <CardHeader className="flex flex-row items-center justify-between pb-2 relative">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t('dashboard.cumulativeSavings')}
-            </CardTitle>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-              <Wallet className="h-4 w-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <p className="text-2xl font-bold tracking-tight">
-              {formatCurrency(cumulativeSavings, currency, locale)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('period.totalSavings')}
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title={t('dashboard.cumulativeSavings')}
+          value={formatCurrency(cumulativeSavings, currency, locale)}
+          icon={Wallet}
+          colorScheme="primary"
+          subtitle={t('period.totalSavings')}
+        />
 
         <SavingsGauge
           income={totalIncome}
@@ -156,7 +128,7 @@ export function Dashboard() {
         {/* Left column: Money In + Money Out */}
         <div className="lg:col-span-2 space-y-6">
           {/* Money In */}
-          <Card className="overflow-hidden">
+          <GlassCard className="overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between bg-success/5 border-b border-success/10">
               <div className="flex items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/10">
@@ -175,7 +147,7 @@ export function Dashboard() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-border/50">
-                <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+                <div className="flex items-center justify-between px-4 py-3 row-hover transition-colors">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{t('dashboard.paycheck')}</span>
                     {paycheckTxs.some(t => t.source === 'estimated') && (
@@ -189,7 +161,7 @@ export function Dashboard() {
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+                <div className="flex items-center justify-between px-4 py-3 row-hover transition-colors">
                   <span className="text-sm font-medium">{t('dashboard.additionalIncome')}</span>
                   <span className="text-sm font-semibold text-success tabular-nums">
                     {formatCurrency(additionalTotal, currency, locale)}
@@ -204,10 +176,10 @@ export function Dashboard() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </GlassCard>
 
           {/* Money Out */}
-          <Card className="overflow-hidden">
+          <GlassCard className="overflow-hidden">
             <CardHeader className="bg-destructive/5 border-b border-destructive/10">
               <div className="flex items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-destructive/10">
@@ -244,7 +216,7 @@ export function Dashboard() {
                 <EmptyState />
               )}
             </CardContent>
-          </Card>
+          </GlassCard>
         </div>
 
         {/* Right column: Chart */}
@@ -271,6 +243,22 @@ export function Dashboard() {
           transaction_date: editTx.transaction_date,
           financial_account_id: editTx.financial_account_id,
         } : undefined}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTx}
+        onOpenChange={(open) => { if (!open) setDeleteTx(null) }}
+        title={t('transactions.confirmDelete')}
+        description={t('transactions.confirmDelete')}
+        confirmLabel={t('common.delete', 'Delete')}
+        cancelLabel={t('common.cancel')}
+        variant="destructive"
+        onConfirm={async () => {
+          if (deleteTx) {
+            await deleteTransaction(deleteTx.id)
+            setDeleteTx(null)
+          }
+        }}
       />
     </div>
   )

@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/stores/auth-context'
 import { useHousehold } from '@/stores/household-context'
 import { supabase } from '@/lib/supabase'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/glass-card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AccountForm } from '@/components/accounts/AccountForm'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Plus, Trash2, Landmark, CreditCard, PiggyBank, Wallet } from 'lucide-react'
 
 const accountIcons = {
@@ -22,67 +22,38 @@ export function AccountsPage() {
   const { profile } = useAuth()
   const { household, accounts, refreshAccounts } = useHousehold()
 
-  const [accountName, setAccountName] = useState('')
-  const [accountType, setAccountType] = useState<'checking' | 'savings' | 'credit_card' | 'other'>('checking')
+  const [formOpen, setFormOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
-  async function handleAddAccount() {
-    if (!household || !profile || !accountName.trim()) return
+  async function handleAddAccount(name: string, type: 'checking' | 'savings' | 'credit_card' | 'other') {
+    if (!household || !profile) return
     await supabase.from('financial_accounts').insert({
       household_id: household.id,
       owner_id: profile.id,
-      name: accountName.trim(),
-      type: accountType,
+      name,
+      type,
       currency: household.default_currency,
     })
-    setAccountName('')
     refreshAccounts()
   }
 
   async function handleDeleteAccount(id: string) {
-    if (!window.confirm(t('transactions.confirmDelete'))) return
     await supabase.from('financial_accounts').delete().eq('id', id)
     refreshAccounts()
   }
 
   return (
     <div className="max-w-2xl space-y-6 animate-fade-in">
-      <h1 className="text-2xl font-bold tracking-tight">{t('nav.accounts')}</h1>
-
-      {/* Add Account */}
-      <Card className="overflow-hidden">
-        <CardHeader className="border-b border-border/50">
-          <CardTitle className="text-base font-semibold">{t('settings.addAccount')}</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Input
-              placeholder={t('settings.addAccount')}
-              value={accountName}
-              onChange={e => setAccountName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddAccount()}
-              className="flex-1"
-            />
-            <Select value={accountType} onValueChange={(v) => setAccountType(v as typeof accountType)}>
-              <SelectTrigger className="w-full sm:w-40 cursor-pointer">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="checking" className="cursor-pointer">Checking</SelectItem>
-                <SelectItem value="savings" className="cursor-pointer">Savings</SelectItem>
-                <SelectItem value="credit_card" className="cursor-pointer">Credit Card</SelectItem>
-                <SelectItem value="other" className="cursor-pointer">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={handleAddAccount} disabled={!accountName.trim()} className="cursor-pointer">
-              <Plus className="h-4 w-4 mr-1" />
-              {t('common.add')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">{t('nav.accounts')}</h1>
+        <Button onClick={() => setFormOpen(true)} className="cursor-pointer rounded-xl h-9">
+          <Plus className="h-4 w-4 mr-1.5" />
+          {t('settings.addAccount')}
+        </Button>
+      </div>
 
       {/* Account List */}
-      <Card className="overflow-hidden">
+      <GlassCard className="overflow-hidden">
         <CardHeader className="border-b border-border/50">
           <CardTitle className="text-base font-semibold">{t('settings.financialAccounts')}</CardTitle>
         </CardHeader>
@@ -116,7 +87,7 @@ export function AccountsPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-destructive hover:text-destructive cursor-pointer shrink-0"
-                      onClick={() => handleDeleteAccount(account.id)}
+                      onClick={() => setDeleteId(account.id)}
                       aria-label={t('common.delete')}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -127,13 +98,35 @@ export function AccountsPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </GlassCard>
 
-      <Card className="border-dashed">
+      <GlassCard className="border-dashed">
         <CardContent className="py-6 text-center text-sm text-muted-foreground">
           {t('settings.connectBank')}
         </CardContent>
-      </Card>
+      </GlassCard>
+
+      <AccountForm
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onSave={handleAddAccount}
+      />
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => { if (!open) setDeleteId(null) }}
+        title={t('transactions.confirmDelete')}
+        description={t('transactions.confirmDelete')}
+        confirmLabel={t('common.delete', 'Delete')}
+        cancelLabel={t('common.cancel')}
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteId) {
+            handleDeleteAccount(deleteId)
+            setDeleteId(null)
+          }
+        }}
+      />
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/stores/auth-context'
 import { useHousehold } from '@/stores/household-context'
 import { COMMON_CURRENCIES } from '@/lib/currency'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/glass-card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -61,7 +61,7 @@ export function SettingsPage() {
       <h1 className="text-2xl font-bold tracking-tight">{t('settings.title')}</h1>
 
       {/* Profile */}
-      <Card className="overflow-hidden">
+      <GlassCard className="overflow-hidden">
         <CardHeader className="border-b border-border/50">
           <CardTitle className="text-base font-semibold">{t('settings.profile')}</CardTitle>
         </CardHeader>
@@ -134,13 +134,13 @@ export function SettingsPage() {
               {saving ? t('common.loading') : t('common.save')}
             </Button>
             {saved && (
-              <span className="text-sm text-green-500 animate-fade-in">
+              <span className="text-sm text-success animate-fade-in">
                 {t('settings.saved', 'Saved!')}
               </span>
             )}
           </div>
         </CardContent>
-      </Card>
+      </GlassCard>
     </div>
   )
 }

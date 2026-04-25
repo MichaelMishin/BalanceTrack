@@ -8,10 +8,11 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
+import { GlassCard, CardContent } from '@/components/ui/glass-card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { TransactionForm } from '@/components/transactions/TransactionForm'
 import type { Transaction, TransactionInsert } from '@/types/database'
 
@@ -29,6 +30,7 @@ export function TransactionsPage() {
 
   const [formOpen, setFormOpen] = useState(false)
   const [editTx, setEditTx] = useState<Transaction | null>(null)
+  const [deleteTx, setDeleteTx] = useState<Transaction | null>(null)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -103,7 +105,7 @@ export function TransactionsPage() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <GlassCard>
         <CardContent className="pt-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -138,7 +140,7 @@ export function TransactionsPage() {
             </Select>
           </div>
         </CardContent>
-      </Card>
+      </GlassCard>
 
       {/* Results count */}
       <p className="text-sm text-muted-foreground">
@@ -146,7 +148,7 @@ export function TransactionsPage() {
       </p>
 
       {/* Transaction List */}
-      <Card className="overflow-hidden">
+      <GlassCard className="overflow-hidden">
         <CardContent className="p-0">
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4">
@@ -215,11 +217,7 @@ export function TransactionsPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive cursor-pointer"
-                        onClick={async () => {
-                          if (window.confirm(t('transactions.confirmDelete'))) {
-                            await deleteTransaction(tx.id)
-                          }
-                        }}
+                        onClick={() => setDeleteTx(tx)}
                         aria-label={t('common.delete')}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -231,7 +229,7 @@ export function TransactionsPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </GlassCard>
 
       <TransactionForm
         open={formOpen}
@@ -246,6 +244,22 @@ export function TransactionsPage() {
           transaction_date: editTx.transaction_date,
           financial_account_id: editTx.financial_account_id,
         } : undefined}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTx}
+        onOpenChange={(open) => { if (!open) setDeleteTx(null) }}
+        title={t('transactions.confirmDelete')}
+        description={t('transactions.confirmDelete')}
+        confirmLabel={t('common.delete', 'Delete')}
+        cancelLabel={t('common.cancel')}
+        variant="destructive"
+        onConfirm={async () => {
+          if (deleteTx) {
+            await deleteTransaction(deleteTx.id)
+            setDeleteTx(null)
+          }
+        }}
       />
     </div>
   )

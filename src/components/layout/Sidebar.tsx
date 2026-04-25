@@ -28,7 +28,7 @@ export function Sidebar() {
   const { signOut } = useAuth()
 
   return (
-    <aside className="hidden w-[260px] flex-col bg-sidebar text-sidebar-foreground md:flex border-r border-sidebar-border/50">
+    <aside className="hidden w-[260px] flex-col bg-sidebar/80 backdrop-blur-xl text-sidebar-foreground md:flex border-r border-sidebar-border/50">
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 px-5">
         <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-400 text-primary-foreground font-bold text-sm shadow-lg shadow-primary/20">

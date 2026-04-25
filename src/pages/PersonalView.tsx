@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Wallet } from 'lucide-react'
+import { Plus, Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { useHousehold } from '@/stores/household-context'
 import { useAuth } from '@/stores/auth-context'
 import { useTransactions } from '@/hooks/use-transactions'
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
+import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/glass-card'
+import { StatCard } from '@/components/ui/stat-card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ExpensePieChart } from '@/components/charts/ExpensePieChart'
 import { CategoryDetail } from '@/components/transactions/CategoryDetail'
 import { TransactionForm } from '@/components/transactions/TransactionForm'
@@ -30,6 +33,7 @@ export function PersonalView() {
 
   const [formOpen, setFormOpen] = useState(false)
   const [editTx, setEditTx] = useState<Transaction | null>(null)
+  const [deleteTx, setDeleteTx] = useState<Transaction | null>(null)
 
   const currency = household?.default_currency ?? 'ILS'
   const locale = profile?.locale === 'he' ? 'he-IL' : 'en-US'
@@ -74,40 +78,29 @@ export function PersonalView() {
 
       {/* Summary */}
       <div className="grid gap-4 sm:grid-cols-3 stagger-children">
-        <Card className="card-hover overflow-hidden relative">
-          <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-success to-transparent" />
-          <CardHeader className="pb-2 relative">
-            <CardTitle className="text-sm text-muted-foreground">{t('dashboard.moneyIn')}</CardTitle>
-          </CardHeader>
-          <CardContent className="relative">
-            <p className="text-xl font-bold text-success tabular-nums">{formatCurrency(totalIncome, currency, locale)}</p>
-          </CardContent>
-        </Card>
-        <Card className="card-hover overflow-hidden relative">
-          <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-destructive to-transparent" />
-          <CardHeader className="pb-2 relative">
-            <CardTitle className="text-sm text-muted-foreground">{t('dashboard.moneyOut')}</CardTitle>
-          </CardHeader>
-          <CardContent className="relative">
-            <p className="text-xl font-bold text-destructive tabular-nums">{formatCurrency(totalExpenses, currency, locale)}</p>
-          </CardContent>
-        </Card>
-        <Card className="card-hover overflow-hidden relative">
-          <div className={`absolute inset-0 opacity-5 ${netSavings >= 0 ? 'bg-gradient-to-br from-success to-transparent' : 'bg-gradient-to-br from-destructive to-transparent'}`} />
-          <CardHeader className="pb-2 relative">
-            <CardTitle className="text-sm text-muted-foreground">{t('dashboard.netThisPeriod')}</CardTitle>
-          </CardHeader>
-          <CardContent className="relative">
-            <p className={`text-xl font-bold tabular-nums ${netSavings >= 0 ? 'text-success' : 'text-destructive'}`}>
-              {formatCurrency(netSavings, currency, locale)}
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title={t('dashboard.moneyIn')}
+          value={formatCurrency(totalIncome, currency, locale)}
+          icon={TrendingUp}
+          colorScheme="success"
+        />
+        <StatCard
+          title={t('dashboard.moneyOut')}
+          value={formatCurrency(totalExpenses, currency, locale)}
+          icon={TrendingDown}
+          colorScheme="destructive"
+        />
+        <StatCard
+          title={t('dashboard.netThisPeriod')}
+          value={formatCurrency(netSavings, currency, locale)}
+          icon={netSavings >= 0 ? ArrowUpRight : ArrowDownRight}
+          colorScheme={netSavings >= 0 ? 'success' : 'destructive'}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <Card className="overflow-hidden">
+          <GlassCard className="overflow-hidden">
             <CardHeader className="border-b border-border/50">
               <CardTitle className="text-base font-semibold">{t('dashboard.moneyOut')}</CardTitle>
             </CardHeader>
@@ -124,11 +117,7 @@ export function PersonalView() {
                       currency={currency}
                       locale={locale}
                       onEdit={(tx) => { setEditTx(tx); setFormOpen(true) }}
-                      onDelete={async (tx) => {
-                        if (window.confirm(t('transactions.confirmDelete'))) {
-                          await deleteTransaction(tx.id)
-                        }
-                      }}
+                      onDelete={(tx) => setDeleteTx(tx)}
                     />
                   ))
               ) : (
@@ -140,7 +129,7 @@ export function PersonalView() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </GlassCard>
         </div>
 
         <div>
@@ -165,6 +154,22 @@ export function PersonalView() {
           transaction_date: editTx.transaction_date,
           financial_account_id: editTx.financial_account_id,
         } : undefined}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTx}
+        onOpenChange={(open) => { if (!open) setDeleteTx(null) }}
+        title={t('transactions.confirmDelete')}
+        description={t('transactions.confirmDelete')}
+        confirmLabel={t('common.delete', 'Delete')}
+        cancelLabel={t('common.cancel')}
+        variant="destructive"
+        onConfirm={async () => {
+          if (deleteTx) {
+            await deleteTransaction(deleteTx.id)
+            setDeleteTx(null)
+          }
+        }}
       />
     </div>
   )

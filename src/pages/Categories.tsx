@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHousehold } from '@/stores/household-context'
 import { supabase } from '@/lib/supabase'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/glass-card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { CategoryForm } from '@/components/categories/CategoryForm'
 import { Plus, Eye, EyeOff, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Category, CategoryType } from '@/types/database'
@@ -16,11 +16,10 @@ export function CategoriesPage() {
   const { t } = useTranslation()
   const { household, refreshCategories } = useHousehold()
 
-  const [newName, setNewName] = useState('')
-  const [newType, setNewType] = useState<CategoryType>('expense')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [allCategories, setAllCategories] = useState<Category[]>([])
+  const [formOpen, setFormOpen] = useState(false)
 
   // Fetch ALL categories including hidden ones for management
   const fetchAllCategories = useCallback(async () => {
@@ -40,17 +39,16 @@ export function CategoriesPage() {
   const incomeCategories = allCategories.filter(c => c.type === 'income')
   const expenseCategories = allCategories.filter(c => c.type === 'expense')
 
-  async function handleAdd() {
-    if (!household || !newName.trim()) return
+  async function handleAddViaDialog(name: string, type: CategoryType) {
+    if (!household) return
     const maxOrder = allCategories.reduce((max, c) => Math.max(max, c.sort_order), 0)
     await supabase.from('categories').insert({
       household_id: household.id,
-      name: newName.trim(),
-      type: newType,
+      name,
+      type,
       sort_order: maxOrder + 1,
       is_system: false,
     })
-    setNewName('')
     refreshCategories()
     fetchAllCategories()
   }
@@ -71,14 +69,14 @@ export function CategoriesPage() {
 
   function renderCategoryList(cats: Category[], title: string) {
     return (
-      <Card>
+      <GlassCard>
         <CardHeader>
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-border/50">
             {cats.map(cat => (
-              <div key={cat.id} className={cn("flex items-center gap-3 px-4 py-3", cat.is_hidden && "opacity-50")}>
+              <div key={cat.id} className={cn("flex items-center gap-3 px-4 py-3 row-hover transition-colors", cat.is_hidden && "opacity-50")}>
                 <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
 
                 {editingId === cat.id ? (
@@ -133,50 +131,31 @@ export function CategoriesPage() {
             ))}
           </div>
         </CardContent>
-      </Card>
+      </GlassCard>
     )
   }
 
   return (
     <div className="max-w-2xl space-y-6 animate-fade-in">
-      <h1 className="text-2xl font-bold tracking-tight">{t('categories.title')}</h1>
-
-      {/* Add new category */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('categories.addCategory')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder={t('categories.name')}
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              className="flex-1"
-            />
-            <Select value={newType} onValueChange={(v) => setNewType(v as CategoryType)}>
-              <SelectTrigger className="w-32 cursor-pointer">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="income" className="cursor-pointer">{t('transactions.income')}</SelectItem>
-                <SelectItem value="expense" className="cursor-pointer">{t('transactions.expense')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={handleAdd} disabled={!newName.trim()} className="cursor-pointer">
-              <Plus className="h-4 w-4 mr-1" />
-              {t('common.add')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">{t('categories.title')}</h1>
+        <Button onClick={() => setFormOpen(true)} className="cursor-pointer rounded-xl h-9">
+          <Plus className="h-4 w-4 mr-1.5" />
+          {t('categories.addCategory')}
+        </Button>
+      </div>
 
       {renderCategoryList(incomeCategories, t('dashboard.moneyIn'))}
 
       <Separator />
 
       {renderCategoryList(expenseCategories, t('dashboard.moneyOut'))}
+
+      <CategoryForm
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onSave={handleAddViaDialog}
+      />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { useTranslation } from 'react-i18next'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { GlassCard as Card, CardContent, CardHeader, CardTitle } from '@/components/ui/glass-card'
 import { formatCurrency } from '@/lib/utils'
 import type { Category, Transaction } from '@/types/database'
 

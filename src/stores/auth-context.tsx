@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // that occurs in React 19 Strict Mode (effect runs twice).
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        clearTimeout(timeout)
         setSession(session)
         setUser(session?.user ?? null)
         if (session?.user) {
@@ -48,7 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null)
           setLoading(false)
         }
-        clearTimeout(timeout)
       }
     )
 
@@ -59,14 +59,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    setProfile(data)
-    setLoading(false)
+    try {
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Profile fetch timed out')), 8_000)
+      )
+      const query = supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      const { data } = await Promise.race([query, timeout])
+      setProfile(data)
+    } catch {
+      setProfile(null)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function signInWithEmail(email: string, password: string) {

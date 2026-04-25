@@ -18,18 +18,13 @@ import {
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, User, Settings, Tags, Landmark, LogOut, Receipt } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useTheme } from '@/hooks/use-theme'
 
 export function Navbar() {
   const { t, i18n } = useTranslation()
   const { period, timeframe, goToPreviousPeriod, goToNextPeriod, goToCurrentPeriod, setTimeframe } = useHousehold()
   const { signOut } = useAuth()
-  const [isDark, setIsDark] = useState(true)
-
-  const toggleTheme = () => {
-    setIsDark(!isDark)
-    document.documentElement.classList.toggle('light')
-  }
+  const { isDark, toggleTheme } = useTheme()
 
   const toggleLanguage = () => {
     const newLang = i18n.language === 'en' ? 'he' : 'en'

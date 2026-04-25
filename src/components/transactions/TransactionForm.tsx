@@ -8,12 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { FormDialog } from '@/components/ui/form-dialog'
 import { cn } from '@/lib/utils'
 import type { TransactionInsert, CategoryType } from '@/types/database'
 
@@ -133,14 +128,11 @@ export function TransactionForm({ open, onClose, onSave, editData }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {editData ? t('transactions.edit') : t('transactions.add')}
-          </DialogTitle>
-        </DialogHeader>
-
+    <FormDialog
+      open={open}
+      onOpenChange={(isOpen) => { if (!isOpen) onClose() }}
+      title={editData ? t('transactions.edit') : t('transactions.add')}
+    >
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Type toggle */}
           <div className="flex gap-2">
@@ -276,7 +268,6 @@ export function TransactionForm({ open, onClose, onSave, editData }: Props) {
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+    </FormDialog>
   )
 }

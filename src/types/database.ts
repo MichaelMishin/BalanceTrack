@@ -202,6 +202,60 @@ export type Database = {
           },
         ]
       }
+      import_mapping_rules: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          direction: string
+          household_id: string
+          id: string
+          is_active: boolean
+          name: string
+          pattern: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          direction?: string
+          household_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          pattern: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          direction?: string
+          household_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          pattern?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_mapping_rules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_mapping_rules_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       period_snapshots: {
         Row: {
           created_at: string
@@ -477,3 +531,6 @@ export type TransactionUpdate = Database["public"]["Tables"]["transactions"]["Up
 export type RecurringTransaction = Database["public"]["Tables"]["recurring_transactions"]["Row"]
 export type ExchangeRate = Database["public"]["Tables"]["exchange_rates"]["Row"]
 export type PeriodSnapshot = Database["public"]["Tables"]["period_snapshots"]["Row"]
+export type ImportMappingRule = Database["public"]["Tables"]["import_mapping_rules"]["Row"]
+export type ImportMappingRuleInsert = Database["public"]["Tables"]["import_mapping_rules"]["Insert"]
+export type ImportMappingRuleUpdate = Database["public"]["Tables"]["import_mapping_rules"]["Update"]

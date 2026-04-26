@@ -77,6 +77,21 @@ export interface ImportPreview {
   isIncome: boolean
   mappedCategoryId?: string
   mappedCategoryName?: string
+  /** User manually flipped direction in preview */
+  directionLocked?: boolean
+  /** User manually set category in preview */
+  categoryLocked?: boolean
+}
+
+/** Mirror of the import_mapping_rules DB row used at runtime */
+export interface ImportMappingRule {
+  id: string
+  name: string
+  pattern: string
+  categoryId: string | null
+  direction: 'income' | 'expense' | 'auto'
+  sortOrder: number
+  isActive: boolean
 }
 
 export function mapCSVToTransactions(
@@ -165,6 +180,51 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   health:         ['pharmacy', 'super-pharm', 'doctor', 'clinic', 'hospital', 'dental', 'medical'],
   fitness:        ['gym', 'fitness', 'sport', 'yoga', 'pilates', 'crossfit'],
   utilities:      ['electricity', 'water', 'bezeq', 'hot mobile', 'cellcom', 'partner', 'internet', 'phone bill'],
+}
+
+/**
+ * Apply user-defined mapping rules to a preview row.
+ * Returns overrides for mappedCategoryId/mappedCategoryName/isIncome.
+ * Rules are evaluated in sortOrder ASC; first match wins.
+ */
+export function applyUserRules(
+  row: ImportPreview,
+  rules: ImportMappingRule[],
+  categories: CategoryHint[],
+): { mappedCategoryId?: string; mappedCategoryName?: string; isIncome?: boolean } {
+  const text = `${row.description} ${row.category}`.trim().toLowerCase()
+
+  for (const rule of rules) {
+    if (!rule.isActive) continue
+    let rx: RegExp
+    try {
+      rx = new RegExp(rule.pattern, 'i')
+    } catch {
+      continue // skip invalid patterns silently
+    }
+
+    if (!rx.test(text)) continue
+
+    // Direction override
+    const isIncome =
+      rule.direction === 'auto' ? undefined :
+      rule.direction === 'income' ? true : false
+
+    // Category override
+    let mappedCategoryId: string | undefined
+    let mappedCategoryName: string | undefined
+    if (rule.categoryId) {
+      const cat = categories.find(c => c.id === rule.categoryId)
+      if (cat) {
+        mappedCategoryId = cat.id
+        mappedCategoryName = cat.name
+      }
+    }
+
+    return { mappedCategoryId, mappedCategoryName, isIncome }
+  }
+
+  return {}
 }
 
 export function guessCategoryId(

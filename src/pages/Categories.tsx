@@ -5,23 +5,28 @@ import { useAuth } from '@/stores/auth-context'
 import { supabase } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import { useBudgetLimits } from '@/hooks/use-budget-limits'
+import { useImportRules } from '@/hooks/use-import-rules'
 import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/glass-card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { CategoryForm } from '@/components/categories/CategoryForm'
+import { ImportRuleForm } from '@/components/categories/ImportRuleForm'
 import { IconPicker, CategoryIcon } from '@/components/categories/IconPicker'
-import { Plus, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown, Palette, DollarSign, Trash2, AlertCircle, X } from 'lucide-react'
+import { Plus, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown, Palette, DollarSign, Trash2, AlertCircle, X, Pencil, BookOpen } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { cn } from '@/lib/utils'
 import type { Category, CategoryType } from '@/types/database'
+import type { ImportMappingRule } from '@/lib/csv-import'
+import type { ImportRuleInput } from '@/hooks/use-import-rules'
 
 export function CategoriesPage() {
   const { t } = useTranslation()
   const { household, refreshCategories } = useHousehold()
   const { profile } = useAuth()
   const { setLimit, removeLimit, getLimit } = useBudgetLimits()
+  const { rules, createRule, updateRule, deleteRule } = useImportRules()
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
@@ -34,6 +39,11 @@ export function CategoriesPage() {
   const [dragId, setDragId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // Import Rules state
+  const [ruleFormOpen, setRuleFormOpen] = useState(false)
+  const [editingRule, setEditingRule] = useState<ImportMappingRule | null>(null)
+  const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null)
 
   const currency = household?.default_currency ?? 'ILS'
   const locale = profile?.locale === 'he' ? 'he-IL' : 'en-US'
@@ -361,6 +371,102 @@ export function CategoriesPage() {
 
       {renderCategoryList(expenseCategories, t('dashboard.moneyOut'))}
 
+      <Separator />
+
+      {/* Import Mapping Rules */}
+      <GlassCard>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <CardTitle>{t('import.manageRules')}</CardTitle>
+            </div>
+            <Button
+              size="sm"
+              className="cursor-pointer rounded-xl h-8"
+              onClick={() => { setEditingRule(null); setRuleFormOpen(true) }}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              {t('import.addRule')}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {rules.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+              <p className="text-sm text-muted-foreground">{t('import.noRules')}</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">{t('import.noRulesHint')}</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {rules.map(rule => {
+                const cat = allCategories.find(c => c.id === rule.categoryId)
+                return (
+                  <div key={rule.id} className={cn('flex items-center gap-3 px-4 py-3 text-sm', !rule.isActive && 'opacity-50')}>
+                    {/* Active toggle */}
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={rule.isActive}
+                      onClick={() => updateRule(rule.id, { isActive: !rule.isActive })}
+                      className={cn(
+                        'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+                        rule.isActive ? 'bg-primary' : 'bg-input'
+                      )}
+                    >
+                      <span className={cn(
+                        'pointer-events-none inline-block h-3 w-3 rounded-full bg-background shadow ring-0 transition-transform',
+                        rule.isActive ? 'translate-x-3' : 'translate-x-0'
+                      )} />
+                    </button>
+
+                    {/* Rule info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium truncate">{rule.name}</span>
+                        <code className="text-[10px] bg-muted/50 px-1.5 py-0.5 rounded text-muted-foreground font-mono truncate max-w-[160px]">
+                          {rule.pattern}
+                        </code>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {cat && (
+                          <span className="text-xs text-muted-foreground">→ {cat.name}</span>
+                        )}
+                        {rule.direction !== 'auto' && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            {rule.direction === 'income' ? t('import.ruleDirectionIncome') : t('import.ruleDirectionExpense')}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 cursor-pointer shrink-0"
+                      onClick={() => { setEditingRule(rule); setRuleFormOpen(true) }}
+                      aria-label={t('common.edit')}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 cursor-pointer shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteRuleId(rule.id)}
+                      aria-label={t('common.delete')}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </GlassCard>
+
       <CategoryForm
         open={formOpen}
         onOpenChange={setFormOpen}
@@ -385,6 +491,35 @@ export function CategoriesPage() {
         onConfirm={async () => {
           if (deleteId) {
             await handleDeleteCategory(deleteId)
+          }
+        }}
+      />
+
+      <ImportRuleForm
+        open={ruleFormOpen}
+        onOpenChange={setRuleFormOpen}
+        editRule={editingRule}
+        onSave={async (input: ImportRuleInput) => {
+          if (editingRule) {
+            await updateRule(editingRule.id, input)
+          } else {
+            await createRule(input)
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!deleteRuleId}
+        onOpenChange={(open) => { if (!open) setDeleteRuleId(null) }}
+        title={t('import.deleteRule')}
+        description={t('import.deleteRuleConfirm')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        variant="destructive"
+        onConfirm={async () => {
+          if (deleteRuleId) {
+            await deleteRule(deleteRuleId)
+            setDeleteRuleId(null)
           }
         }}
       />

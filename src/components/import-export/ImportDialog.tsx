@@ -1,16 +1,18 @@
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Upload, FileUp, AlertCircle, CheckCircle2, SkipForward } from 'lucide-react'
+import { Upload, FileUp, AlertCircle, CheckCircle2, SkipForward, ArrowLeftRight } from 'lucide-react'
 import { useHousehold } from '@/stores/household-context'
 import { useAuth } from '@/stores/auth-context'
 import { supabase } from '@/lib/supabase'
-import { parseCSV, mapCSVToTransactions, guessCategoryId, type ColumnMapping, type ImportPreview, type CategoryHint } from '@/lib/csv-import'
+import { parseCSV, mapCSVToTransactions, guessCategoryId, applyUserRules, type ColumnMapping, type ImportPreview, type CategoryHint } from '@/lib/csv-import'
+import { useImportRules } from '@/hooks/use-import-rules'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
+import { SaveRulePopover } from '@/components/import-export/SaveRulePopover'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -25,6 +27,7 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
   const { t } = useTranslation()
   const { household, categories } = useHousehold()
   const { user } = useAuth()
+  const { rules } = useImportRules()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<Step>('upload')
@@ -51,6 +54,47 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
     setImportedCount(0)
     setSkippedCount(0)
     setError(null)
+  }
+
+  function updatePreviewRow(index: number, patch: Partial<ImportPreview>) {
+    setPreview(prev => prev.map((row, i) => i === index ? { ...row, ...patch } : row))
+  }
+
+  function flipAll() {
+    const catHints = categories as unknown as CategoryHint[]
+    setPreview(prev => prev.map(row => {
+      // Don't flip direction-locked rows
+      if (row.directionLocked) return row
+      const newIsIncome = !row.isIncome
+      // Re-guess category unless it's locked
+      if (!row.categoryLocked) {
+        const guess = guessCategoryId(row.category, row.description, newIsIncome, catHints)
+        return { ...row, isIncome: newIsIncome, mappedCategoryId: guess?.id, mappedCategoryName: guess?.name }
+      }
+      return { ...row, isIncome: newIsIncome }
+    }))
+  }
+
+  function flipRow(index: number) {
+    const catHints = categories as unknown as CategoryHint[]
+    setPreview(prev => prev.map((row, i) => {
+      if (i !== index) return row
+      const newIsIncome = !row.isIncome
+      if (!row.categoryLocked) {
+        const guess = guessCategoryId(row.category, row.description, newIsIncome, catHints)
+        return { ...row, isIncome: newIsIncome, directionLocked: true, mappedCategoryId: guess?.id, mappedCategoryName: guess?.name }
+      }
+      return { ...row, isIncome: newIsIncome, directionLocked: true }
+    }))
+  }
+
+  function setRowCategory(index: number, categoryId: string) {
+    const cat = categories.find(c => c.id === categoryId)
+    updatePreviewRow(index, {
+      mappedCategoryId: categoryId,
+      mappedCategoryName: cat?.name,
+      categoryLocked: true,
+    })
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -101,8 +145,18 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
     // Apply category guessing to each row
     const catHints = categories as unknown as CategoryHint[]
     const withCategories = mapped.map(row => {
-      const guess = guessCategoryId(row.category, row.description, row.isIncome, catHints)
-      return { ...row, mappedCategoryId: guess?.id, mappedCategoryName: guess?.name }
+      // User-defined rules take priority over heuristics
+      const ruleOverrides = applyUserRules(row, rules, catHints)
+      const effectiveIsIncome = ruleOverrides.isIncome !== undefined ? ruleOverrides.isIncome : row.isIncome
+      const guess = (!ruleOverrides.mappedCategoryId)
+        ? guessCategoryId(row.category, row.description, effectiveIsIncome, catHints)
+        : null
+      return {
+        ...row,
+        isIncome: effectiveIsIncome,
+        mappedCategoryId: ruleOverrides.mappedCategoryId ?? guess?.id,
+        mappedCategoryName: ruleOverrides.mappedCategoryName ?? guess?.name,
+      }
     })
     setPreview(withCategories)
 
@@ -291,6 +345,19 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label>{t('import.categoryColumn')}</Label>
+              <Select value={mapping.category || '__none__'} onValueChange={v => setMapping(p => ({ ...p, category: v === '__none__' ? '' : v }))}>
+                <SelectTrigger className="cursor-pointer"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__" className="cursor-pointer">—</SelectItem>
+                  {headers.map(h => (
+                    <SelectItem key={h} value={h} className="cursor-pointer">{h}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {error && (
@@ -322,58 +389,113 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
                 </span>
               )}
             </p>
-            {duplicateIndices.size > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Flip All button */}
               <button
                 type="button"
-                onClick={() => setSkipDuplicates(p => !p)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium border transition-colors cursor-pointer',
-                  skipDuplicates
-                    ? 'bg-warning/10 border-warning/40 text-warning'
-                    : 'bg-muted/40 border-border/50 text-muted-foreground'
-                )}
+                onClick={flipAll}
+                title={t('import.flipAllTitle')}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium border transition-colors cursor-pointer bg-muted/40 border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/70"
               >
-                <SkipForward className="h-3 w-3" />
-                {skipDuplicates ? t('import.skippingDuplicates') : t('import.includingDuplicates')}
+                <ArrowLeftRight className="h-3 w-3" />
+                {t('import.flipAll')}
               </button>
-            )}
+              {duplicateIndices.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSkipDuplicates(p => !p)}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium border transition-colors cursor-pointer',
+                    skipDuplicates
+                      ? 'bg-warning/10 border-warning/40 text-warning'
+                      : 'bg-muted/40 border-border/50 text-muted-foreground'
+                  )}
+                >
+                  <SkipForward className="h-3 w-3" />
+                  {skipDuplicates ? t('import.skippingDuplicates') : t('import.includingDuplicates')}
+                </button>
+              )}
+            </div>
           </div>
 
-          <ScrollArea className="h-72 w-full rounded-lg border border-border/50">
+          <ScrollArea className="h-80 w-full rounded-lg border border-border/50">
             <div className="min-w-max divide-y divide-border/50">
               {preview.slice(0, 100).map((row, i) => {
                 const isDup = duplicateIndices.has(i)
+                const rowCategories = categories.filter(c => c.type === (row.isIncome ? 'income' : 'expense'))
                 return (
                   <div
                     key={i}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2 text-xs',
+                      'flex items-start gap-2 px-3 py-2 text-xs',
                       isDup && skipDuplicates && 'opacity-40 line-through'
                     )}
                   >
-                    <span className="text-muted-foreground w-28 shrink-0">
+                    {/* Date */}
+                    <span className="text-muted-foreground w-28 shrink-0 pt-0.5">
                       {row.date}{row.time ? ` ${row.time}` : ''}
                     </span>
-                    <Badge variant={row.isIncome ? 'default' : 'secondary'} className="text-xs px-1.5 py-0 shrink-0">
-                      {row.isIncome ? '+' : '-'}
-                    </Badge>
+
+                    {/* Direction toggle button */}
+                    <button
+                      type="button"
+                      onClick={() => flipRow(i)}
+                      title={row.isIncome ? t('transactions.income') : t('transactions.expense')}
+                      className={cn(
+                        'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors cursor-pointer border',
+                        row.isIncome
+                          ? 'bg-success/10 border-success/40 text-success hover:bg-success/20'
+                          : 'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20'
+                      )}
+                    >
+                      {row.isIncome ? '+' : '−'}
+                    </button>
+
                     {isDup && (
-                      <Badge variant="outline" className="text-xs px-1.5 py-0 shrink-0 text-warning border-warning/40">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 text-warning border-warning/40">
                         {t('import.duplicate')}
                       </Badge>
                     )}
-                    <div className="flex flex-col min-w-0 flex-1 max-w-xs">
+
+                    {/* Description + category selector */}
+                    <div className="flex flex-col min-w-0 flex-1 max-w-xs gap-1">
                       <span className="truncate">{row.description || '—'}</span>
-                      {row.mappedCategoryName && (
-                        <span className="text-[10px] text-muted-foreground/60 truncate">→ {row.mappedCategoryName}</span>
-                      )}
+                      {/* Per-row category select */}
+                      <Select
+                        value={row.mappedCategoryId ?? '__none__'}
+                        onValueChange={v => setRowCategory(i, v === '__none__' ? '' : v)}
+                      >
+                        <SelectTrigger className="h-6 text-[10px] px-2 py-0 border-border/40 bg-muted/30 cursor-pointer max-w-[180px]">
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__" className="text-xs cursor-pointer">—</SelectItem>
+                          {rowCategories.map(cat => (
+                            <SelectItem key={cat.id} value={cat.id} className="text-xs cursor-pointer">
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
+
+                    {/* Amount */}
                     <span className={cn(
-                      'font-medium tabular-nums shrink-0',
+                      'font-medium tabular-nums shrink-0 pt-0.5',
                       row.isIncome ? 'text-success' : 'text-foreground'
                     )}>
                       {row.amount.toFixed(2)}
                     </span>
+
+                    {/* Save as Rule */}
+                    <SaveRulePopover
+                      description={row.description}
+                      categoryId={row.mappedCategoryId}
+                      direction={row.directionLocked
+                        ? (row.isIncome ? 'income' : 'expense')
+                        : 'auto'}
+                      className="shrink-0 pt-0.5"
+                    />
                   </div>
                 )
               })}

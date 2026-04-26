@@ -39,7 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // synchronously on subscribe, avoiding the getSession race condition
     // that occurs in React 19 Strict Mode (effect runs twice).
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        // TOKEN_REFRESHED just rotates the JWT — skip user/profile state updates
+        // to avoid triggering downstream data reloads (e.g. household re-fetch).
+        if (event === 'TOKEN_REFRESHED') {
+          setSession(session)
+          return
+        }
         clearTimeout(timeout)
         setSession(session)
         setUser(session?.user ?? null)

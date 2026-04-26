@@ -16,7 +16,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, User, Settings, Tags, Landmark, LogOut, Receipt } from 'lucide-react'
+import { LayoutDashboard, Settings, Tags, Landmark, LogOut, Receipt, CalendarClock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/hooks/use-theme'
 
@@ -35,8 +35,8 @@ export function Navbar() {
 
   const mobileNavItems = [
     { key: 'dashboard', path: '/', icon: LayoutDashboard },
-    { key: 'personal', path: '/personal', icon: User },
     { key: 'transactions', path: '/transactions', icon: Receipt },
+    { key: 'recurring', path: '/recurring', icon: CalendarClock },
     { key: 'categories', path: '/categories', icon: Tags },
     { key: 'accounts', path: '/accounts', icon: Landmark },
     { key: 'settings', path: '/settings', icon: Settings },

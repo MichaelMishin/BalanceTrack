@@ -2,13 +2,13 @@ import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard,
-  User,
   Settings,
   Tags,
   Landmark,
   LogOut,
   Sparkles,
   Receipt,
+  CalendarClock,
 } from 'lucide-react'
 import { useAuth } from '@/stores/auth-context'
 import { cn } from '@/lib/utils'
@@ -16,8 +16,8 @@ import { Button } from '@/components/ui/button'
 
 const navItems = [
   { key: 'dashboard', path: '/', icon: LayoutDashboard },
-  { key: 'personal', path: '/personal', icon: User },
   { key: 'transactions', path: '/transactions', icon: Receipt },
+  { key: 'recurring', path: '/recurring', icon: CalendarClock },
   { key: 'categories', path: '/categories', icon: Tags },
   { key: 'accounts', path: '/accounts', icon: Landmark },
   { key: 'settings', path: '/settings', icon: Settings },

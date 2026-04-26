@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Zap, Download, Users, User } from 'lucide-react'
 import { useHousehold } from '@/stores/household-context'
 import { useAuth } from '@/stores/auth-context'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -16,15 +16,25 @@ import { ExpensePieChart } from '@/components/charts/ExpensePieChart'
 import { SavingsGauge } from '@/components/charts/SavingsGauge'
 import { CategoryDetail } from '@/components/transactions/CategoryDetail'
 import { TransactionForm } from '@/components/transactions/TransactionForm'
+import { ExportDialog } from '@/components/import-export/ExportDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 import type { Transaction, TransactionInsert } from '@/types/database'
 
 export function Dashboard() {
   const { t } = useTranslation()
   const { household, categories } = useHousehold()
   const { profile } = useAuth()
+
+  const [view, setView] = useState<'household' | 'personal'>('household')
+
+  const householdData = useTransactions(false)
+  const personalData = useTransactions(true)
+
+  const data = view === 'household' ? householdData : personalData
   const {
+    transactions,
     incomeTransactions,
     expensesByCategory,
     totalIncome,
@@ -34,13 +44,15 @@ export function Dashboard() {
     updateTransaction,
     deleteTransaction,
     loading,
-  } = useTransactions()
+  } = data
+
   const { cumulativeSavings } = useSavings()
   const { insights } = useInsights()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const [deleteTx, setDeleteTx] = useState<Transaction | null>(null)
+  const [exportOpen, setExportOpen] = useState(false)
 
   const currency = household?.default_currency ?? 'ILS'
   const locale = profile?.locale === 'he' ? 'he-IL' : 'en-US'
@@ -59,7 +71,7 @@ export function Dashboard() {
     setFormOpen(true)
   }
 
-  async function handleDelete(tx: Transaction) {
+  function handleDelete(tx: Transaction) {
     setDeleteTx(tx)
   }
 
@@ -67,7 +79,7 @@ export function Dashboard() {
     return <DashboardSkeleton />
   }
 
-  // Group income transactions
+  // Group income transactions (household view only)
   const paycheckCategory = categories.find(c => c.name_key === 'paycheck' || c.name === 'Paycheck')
   const paycheckTxs = incomeTransactions.filter(t => t.category_id === paycheckCategory?.id)
   const additionalIncomeTxs = incomeTransactions.filter(t => t.category_id !== paycheckCategory?.id)
@@ -78,6 +90,37 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header with view toggle */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-bold tracking-tight">{t('dashboard.title')}</h1>
+        <div className="flex items-center gap-2 rounded-xl border border-border/50 p-1 bg-muted/30">
+          <button
+            onClick={() => setView('household')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all cursor-pointer',
+              view === 'household'
+                ? 'bg-background shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Users className="h-3.5 w-3.5" />
+            {t('dashboard.household')}
+          </button>
+          <button
+            onClick={() => setView('personal')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all cursor-pointer',
+              view === 'personal'
+                ? 'bg-background shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <User className="h-3.5 w-3.5" />
+            {t('dashboard.mine')}
+          </button>
+        </div>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
         <StatCard
@@ -103,8 +146,8 @@ export function Dashboard() {
         />
       </div>
 
-      {/* Insights */}
-      {insights.length > 0 && (
+      {/* Insights (household view only) */}
+      {view === 'household' && insights.length > 0 && (
         <div className="space-y-2 animate-fade-in">
           {insights.map(insight => (
             <div
@@ -136,45 +179,82 @@ export function Dashboard() {
                 </div>
                 <CardTitle className="text-base font-semibold">{t('dashboard.moneyIn')}</CardTitle>
               </div>
-              <Button
-                size="sm"
-                onClick={() => setFormOpen(true)}
-                className="cursor-pointer rounded-xl h-8 text-xs"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                {t('transactions.add')}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setExportOpen(true)}
+                  className="cursor-pointer rounded-xl h-8 text-xs"
+                >
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                  {t('export.title')}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setFormOpen(true)}
+                  className="cursor-pointer rounded-xl h-8 text-xs"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  {t('transactions.add')}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-border/50">
-                <div className="flex items-center justify-between px-4 py-3 row-hover transition-colors">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{t('dashboard.paycheck')}</span>
-                    {paycheckTxs.some(t => t.source === 'estimated') && (
-                      <Badge variant="outline" className="text-warning border-warning/50 text-xs">
-                        {t('dashboard.estimated')}
-                      </Badge>
-                    )}
+              {view === 'household' ? (
+                <div className="divide-y divide-border/50">
+                  <div className="flex items-center justify-between px-4 py-3 row-hover transition-colors">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{t('dashboard.paycheck')}</span>
+                      {paycheckTxs.some(t => t.source === 'estimated') && (
+                        <Badge variant="outline" className="text-warning border-warning/50 text-xs">
+                          {t('dashboard.estimated')}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold text-success tabular-nums">
+                      {formatCurrency(paycheckTotal, currency, locale)}
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold text-success tabular-nums">
-                    {formatCurrency(paycheckTotal, currency, locale)}
-                  </span>
+                  <div className="flex items-center justify-between px-4 py-3 row-hover transition-colors">
+                    <span className="text-sm font-medium">{t('dashboard.additionalIncome')}</span>
+                    <span className="text-sm font-semibold text-success tabular-nums">
+                      {formatCurrency(additionalTotal, currency, locale)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3 bg-muted/20">
+                    <span className="text-sm font-bold">{t('dashboard.total')}</span>
+                    <span className="text-sm font-bold text-success tabular-nums">
+                      {formatCurrency(totalIncome, currency, locale)}
+                    </span>
+                  </div>
                 </div>
-
-                <div className="flex items-center justify-between px-4 py-3 row-hover transition-colors">
-                  <span className="text-sm font-medium">{t('dashboard.additionalIncome')}</span>
-                  <span className="text-sm font-semibold text-success tabular-nums">
-                    {formatCurrency(additionalTotal, currency, locale)}
-                  </span>
+              ) : (
+                <div className="divide-y divide-border/50">
+                  {incomeTransactions.length === 0 ? (
+                    <div className="px-4 py-6 text-sm text-muted-foreground text-center">
+                      {t('dashboard.noTransactions')}
+                    </div>
+                  ) : (
+                    incomeTransactions.map(tx => (
+                      <div key={tx.id} className="flex items-center justify-between px-4 py-3 row-hover transition-colors">
+                        <div>
+                          <p className="text-sm font-medium">{tx.description ?? categories.find(c => c.id === tx.category_id)?.name ?? '—'}</p>
+                          <p className="text-xs text-muted-foreground">{tx.transaction_date}</p>
+                        </div>
+                        <span className="text-sm font-semibold text-success tabular-nums">
+                          {formatCurrency(tx.converted_amount ?? tx.amount, currency, locale)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                  <div className="flex items-center justify-between px-4 py-3 bg-muted/20">
+                    <span className="text-sm font-bold">{t('dashboard.total')}</span>
+                    <span className="text-sm font-bold text-success tabular-nums">
+                      {formatCurrency(totalIncome, currency, locale)}
+                    </span>
+                  </div>
                 </div>
-
-                <div className="flex items-center justify-between px-4 py-3 bg-muted/20">
-                  <span className="text-sm font-bold">{t('dashboard.total')}</span>
-                  <span className="text-sm font-bold text-success tabular-nums">
-                    {formatCurrency(totalIncome, currency, locale)}
-                  </span>
-                </div>
-              </div>
+              )}
             </CardContent>
           </GlassCard>
 
@@ -260,6 +340,17 @@ export function Dashboard() {
           }
         }}
       />
+
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        transactions={transactions}
+        categories={categories}
+        periodLabel={household ? `${household.name}-period` : 'period'}
+        totals={{ income: totalIncome, expenses: totalExpenses, net: netSavings }}
+        currency={currency}
+        locale={locale}
+      />
     </div>
   )
 }
@@ -267,6 +358,10 @@ export function Dashboard() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-9 w-48 rounded-xl" />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map(i => (
           <Card key={i} className="overflow-hidden">

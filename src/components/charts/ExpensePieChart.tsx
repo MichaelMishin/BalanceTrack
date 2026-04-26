@@ -73,8 +73,7 @@ export function ExpensePieChart({ expensesByCategory, currency, locale = 'en-US'
         <CardTitle className="text-base">{t('dashboard.expenseBreakdown')}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={300}>
             <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Pie
                 data={chartData}
@@ -106,7 +105,6 @@ export function ExpensePieChart({ expensesByCategory, currency, locale = 'en-US'
               />
             </PieChart>
           </ResponsiveContainer>
-        </div>
 
         {/* Accessible data table */}
         <table className="mt-4 w-full text-sm" role="table">
@@ -119,7 +117,7 @@ export function ExpensePieChart({ expensesByCategory, currency, locale = 'en-US'
           </thead>
           <tbody>
             {chartData.map((item, i) => (
-              <tr key={item.name} className="flex items-center justify-between py-1">
+              <tr key={i} className="flex items-center justify-between py-1">
                 <td className="flex items-center gap-2">
                   <span
                     className="inline-block h-3 w-3 rounded-full"

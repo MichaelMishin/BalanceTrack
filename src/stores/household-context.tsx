@@ -104,7 +104,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       return
     }
     loadHouseholdData()
-  }, [user])
+  }, [user?.id])
 
   async function loadHouseholdData() {
     if (!user) return

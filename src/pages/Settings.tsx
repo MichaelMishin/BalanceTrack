@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/stores/auth-context'
 import { useHousehold } from '@/stores/household-context'
+import { useTheme } from '@/hooks/use-theme'
 import { COMMON_CURRENCIES } from '@/lib/currency'
 import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/glass-card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { HouseholdSection } from '@/components/household/HouseholdSection'
 import type { TimeFrame } from '@/types/database'
 
 export function SettingsPage() {
@@ -141,6 +144,46 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </GlassCard>
+
+      {/* Theme */}
+      <GlassCard className="overflow-hidden">
+        <CardHeader className="border-b border-border/50">
+          <CardTitle className="text-base font-semibold">{t('settings.theme')}</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <ThemeToggle />
+        </CardContent>
+      </GlassCard>
+
+      <Separator />
+
+      {/* Household */}
+      <h2 className="text-xl font-bold tracking-tight">{t('settings.household')}</h2>
+      <HouseholdSection />
+    </div>
+  )
+}
+
+function ThemeToggle() {
+  const { t } = useTranslation()
+  const { theme, setTheme } = useTheme()
+
+  return (
+    <div className="flex gap-2">
+      <Button
+        variant={theme === 'dark' ? 'default' : 'outline'}
+        className="flex-1 cursor-pointer"
+        onClick={() => setTheme('dark')}
+      >
+        {t('settings.dark')}
+      </Button>
+      <Button
+        variant={theme === 'light' ? 'default' : 'outline'}
+        className="flex-1 cursor-pointer"
+        onClick={() => setTheme('light')}
+      >
+        {t('settings.light')}
+      </Button>
     </div>
   )
 }

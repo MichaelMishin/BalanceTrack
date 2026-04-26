@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, Plus, Edit, Trash2, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, ArrowUpRight, ArrowDownRight, Download, Upload } from 'lucide-react'
 import { useHousehold } from '@/stores/household-context'
 import { useAuth } from '@/stores/auth-context'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { TransactionForm } from '@/components/transactions/TransactionForm'
+import { ExportDialog } from '@/components/import-export/ExportDialog'
+import { ImportDialog } from '@/components/import-export/ImportDialog'
 import type { Transaction, TransactionInsert } from '@/types/database'
 
 export function TransactionsPage() {
@@ -34,6 +36,8 @@ export function TransactionsPage() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [exportOpen, setExportOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
 
   const currency = household?.default_currency ?? 'ILS'
   const locale = profile?.locale === 'he' ? 'he-IL' : 'en-US'
@@ -98,10 +102,20 @@ export function TransactionsPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">{t('transactions.list')}</h1>
-        <Button onClick={() => setFormOpen(true)} className="cursor-pointer rounded-xl h-9">
-          <Plus className="h-4 w-4 mr-1.5" />
-          {t('transactions.add')}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)} className="cursor-pointer rounded-xl h-9">
+            <Upload className="h-4 w-4 mr-1.5" />
+            {t('import.title')}
+          </Button>
+          <Button variant="outline" onClick={() => setExportOpen(true)} className="cursor-pointer rounded-xl h-9">
+            <Download className="h-4 w-4 mr-1.5" />
+            {t('export.title')}
+          </Button>
+          <Button onClick={() => setFormOpen(true)} className="cursor-pointer rounded-xl h-9">
+            <Plus className="h-4 w-4 mr-1.5" />
+            {t('transactions.add')}
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -260,6 +274,27 @@ export function TransactionsPage() {
             setDeleteTx(null)
           }
         }}
+      />
+
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        transactions={transactions}
+        categories={categories}
+        periodLabel={`transactions-${new Date().toISOString().split('T')[0]}`}
+        totals={{
+          income: transactions.filter(tx => categories.find(c => c.id === tx.category_id)?.type === 'income').reduce((s, t) => s + (t.converted_amount ?? t.amount), 0),
+          expenses: transactions.filter(tx => categories.find(c => c.id === tx.category_id)?.type === 'expense').reduce((s, t) => s + (t.converted_amount ?? t.amount), 0),
+          net: 0,
+        }}
+        currency={currency}
+        locale={locale}
+      />
+
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={() => { /* refresh is automatic via fetchTransactions */ }}
       />
     </div>
   )

@@ -29,27 +29,27 @@
 - [x] Currency conversion lib (ExchangeRate-API + DB cache)
 - [x] Savings/period snapshot hooks
 
-## Phase 2: Polish & Testing (NEXT)
+## Phase 2: Polish & Testing (DONE)
 - [x] Clean up unused Vite template files (App.css, assets/)
 - [x] Fix TypeScript strict-mode warnings
 - [x] Add loading skeletons for all data-fetching pages
 - [x] Add empty-state illustrations for zero-data scenarios
 - [x] End-to-end tests (Playwright)
 - [x] Transaction list view with filters (date range, category, type)
-- [ ] Household invite/join flow (invite by email, accept invite)
-- [ ] Period snapshot auto-computation (daily cron or on-demand)
-- [ ] Recurring transaction generation (Edge Function or pg_cron)
-- [ ] Paycheck estimation from historical data
+- [x] Household invite/join flow (invite by code, accept invite)
+- [x] Period snapshot auto-computation (on-demand)
+- [x] Recurring transaction generation (client-side auto-generation)
+- [x] Paycheck estimation from historical data
 - [x] Unit tests for hooks and utility functions
 
-## Phase 3: Advanced Features
-- [ ] Data export (CSV/PDF per period)
-- [ ] Bank import via CSV upload
-- [ ] Advanced insights (historical comparison, trend analysis)
-- [ ] Budget limits per category with alerts
-- [ ] Drag-and-drop category reordering
-- [ ] Custom Lucide icon picker for categories
-- [ ] Dark/light mode persistence (localStorage)
+## Phase 3: Advanced Features (DONE)
+- [x] Data export (CSV/PDF per period)
+- [x] Bank import via CSV upload
+- [x] Advanced insights (historical comparison, trend analysis)
+- [x] Budget limits per category with alerts
+- [x] Drag-and-drop category reordering
+- [x] Custom Lucide icon picker for categories
+- [x] Dark/light mode persistence (localStorage)
 
 ## Phase 4: Mobile
 - [ ] Capacitor integration (iOS/Android compilation)

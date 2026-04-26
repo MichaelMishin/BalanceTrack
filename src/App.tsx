@@ -4,8 +4,8 @@ import { HouseholdProvider } from '@/stores/household-context'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { AuthPage } from '@/pages/Auth'
 import { Dashboard } from '@/pages/Dashboard'
-import { PersonalView } from '@/pages/PersonalView'
 import { TransactionsPage } from '@/pages/Transactions'
+import { RecurringTransactionsPage } from '@/pages/RecurringTransactions'
 import { SettingsPage } from '@/pages/Settings'
 import { CategoriesPage } from '@/pages/Categories'
 import { AccountsPage } from '@/pages/Accounts'
@@ -35,8 +35,9 @@ function ProtectedRoutes() {
       <Routes>
         <Route element={<MainLayout />}>
           <Route index element={<Dashboard />} />
-          <Route path="personal" element={<PersonalView />} />
+          <Route path="personal" element={<Navigate to="/" replace />} />
           <Route path="transactions" element={<TransactionsPage />} />
+          <Route path="recurring" element={<RecurringTransactionsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="accounts" element={<AccountsPage />} />

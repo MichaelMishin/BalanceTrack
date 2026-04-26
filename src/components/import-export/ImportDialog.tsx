@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Upload, FileUp, AlertCircle, CheckCircle2, SkipForward, ArrowLeftRight } from 'lucide-react'
+import { Upload, FileUp, AlertCircle, CheckCircle2, SkipForward, ArrowLeftRight, EyeOff, Eye, TrendingUp, TrendingDown } from 'lucide-react'
 import { useHousehold } from '@/stores/household-context'
 import { useAuth } from '@/stores/auth-context'
 import { supabase } from '@/lib/supabase'
@@ -36,6 +36,7 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
   const [mapping, setMapping] = useState<ColumnMapping>({ date: '', amount: '', description: '' })
   const [preview, setPreview] = useState<ImportPreview[]>([])
   const [duplicateIndices, setDuplicateIndices] = useState<Set<number>>(new Set())
+  const [excludedIndices, setExcludedIndices] = useState<Set<number>>(new Set())
   const [skipDuplicates, setSkipDuplicates] = useState(true)
   const [importing, setImporting] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
@@ -49,11 +50,29 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
     setMapping({ date: '', amount: '', description: '' })
     setPreview([])
     setDuplicateIndices(new Set())
+    setExcludedIndices(new Set())
     setSkipDuplicates(true)
     setImporting(false)
     setImportedCount(0)
     setSkippedCount(0)
     setError(null)
+  }
+
+  function toggleExclude(index: number) {
+    setExcludedIndices(prev => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }
+
+  function excludeAll() {
+    setExcludedIndices(new Set(preview.map((_, i) => i)))
+  }
+
+  function includeAll() {
+    setExcludedIndices(new Set())
   }
 
   function updatePreviewRow(index: number, patch: Partial<ImportPreview>) {
@@ -142,15 +161,17 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
       return
     }
 
-    // Apply category guessing to each row
+    // Apply category guessing: heuristics run first, user rules override
     const catHints = categories as unknown as CategoryHint[]
     const withCategories = mapped.map(row => {
-      // User-defined rules take priority over heuristics
+      // 1. Apply user rules to get direction/category overrides
       const ruleOverrides = applyUserRules(row, rules, catHints)
       const effectiveIsIncome = ruleOverrides.isIncome !== undefined ? ruleOverrides.isIncome : row.isIncome
-      const guess = (!ruleOverrides.mappedCategoryId)
-        ? guessCategoryId(row.category, row.description, effectiveIsIncome, catHints)
-        : null
+
+      // 2. Always run default heuristics with the effective direction
+      const guess = guessCategoryId(row.category, row.description, effectiveIsIncome, catHints)
+
+      // 3. User rule category takes priority; heuristic is the fallback
       return {
         ...row,
         isIncome: effectiveIsIncome,
@@ -223,9 +244,11 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
         ?? categories.find(c => c.type === 'expense')
       const defaultIncomeCat = categories.find(c => c.type === 'income')
 
-      const rowsToImport = skipDuplicates
-        ? preview.filter((_, i) => !duplicateIndices.has(i))
-        : preview
+      const rowsToImport = preview.filter((_, i) => {
+        if (excludedIndices.has(i)) return false
+        if (skipDuplicates && duplicateIndices.has(i)) return false
+        return true
+      })
 
       const txInserts = rowsToImport.map(row => ({
         household_id: household.id,
@@ -253,8 +276,9 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
         imported += batch.length
       }
 
+      const dupSkipped = skipDuplicates ? [...duplicateIndices].filter(i => !excludedIndices.has(i)).length : 0
       setImportedCount(imported)
-      setSkippedCount(skipDuplicates ? duplicateIndices.size : 0)
+      setSkippedCount(dupSkipped + excludedIndices.size)
       setStep('done')
       onImported()
     } catch (err) {
@@ -272,7 +296,10 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
         onOpenChange(isOpen)
       }}
       title={t('import.title')}
-      className="max-w-2xl sm:max-w-3xl"
+      className={cn(
+        'max-w-2xl',
+        step === 'preview' && 'sm:max-w-4xl'
+      )}
     >
       {step === 'upload' && (
         <div className="space-y-4">
@@ -378,37 +405,98 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
         </div>
       )}
 
-      {step === 'preview' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="text-sm text-muted-foreground">
-              {t('import.previewDesc', { count: preview.length })}
-              {duplicateIndices.size > 0 && (
-                <span className="ml-2 text-warning font-medium">
-                  · {duplicateIndices.size} {t('import.duplicatesFound')}
+      {step === 'preview' && (() => {
+        const totalRows = preview.length
+        const dupCount = [...duplicateIndices].filter(i => !excludedIndices.has(i)).length
+        const excCount = excludedIndices.size
+        const importCount = totalRows - excCount - (skipDuplicates ? dupCount : 0)
+        const incomeCount = preview.filter((r, i) => r.isIncome && !excludedIndices.has(i)).length
+        const expenseCount = preview.filter((r, i) => !r.isIncome && !excludedIndices.has(i)).length
+        const allExcluded = excCount === totalRows
+
+        return (
+          <div className="space-y-3">
+            {/* Summary bar */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1">
+              <span className="text-sm font-medium">{totalRows} {t('import.previewRows')}</span>
+              <span className="flex items-center gap-1 text-xs text-success">
+                <TrendingUp className="h-3 w-3" />
+                {incomeCount} {t('transactions.income').toLowerCase()}
+              </span>
+              <span className="flex items-center gap-1 text-xs text-destructive">
+                <TrendingDown className="h-3 w-3" />
+                {expenseCount} {t('transactions.expense').toLowerCase()}
+              </span>
+              {dupCount > 0 && (
+                <span className="text-xs text-warning">
+                  {dupCount} {t('import.duplicatesFound')}
                 </span>
               )}
-            </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Flip All button */}
+              {excCount > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {excCount} {t('import.excluded')}
+                </span>
+              )}
+              <span className="ml-auto text-xs font-semibold text-primary">
+                → {t('import.importBtn', { count: importCount })}
+              </span>
+            </div>
+
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/30 border border-border/40 px-3 py-2">
+              {/* Select all / none */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={includeAll}
+                  className={cn(
+                    'flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors cursor-pointer border',
+                    excCount === 0
+                      ? 'bg-primary/10 border-primary/30 text-primary'
+                      : 'border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                  )}
+                >
+                  <Eye className="h-3 w-3" />
+                  {t('import.includeAll')}
+                </button>
+                <button
+                  type="button"
+                  onClick={excludeAll}
+                  className={cn(
+                    'flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors cursor-pointer border',
+                    allExcluded
+                      ? 'bg-muted/60 border-border/60 text-muted-foreground'
+                      : 'border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                  )}
+                >
+                  <EyeOff className="h-3 w-3" />
+                  {t('import.excludeAll')}
+                </button>
+              </div>
+
+              <div className="h-4 w-px bg-border/50 hidden sm:block" />
+
+              {/* Flip all */}
               <button
                 type="button"
                 onClick={flipAll}
                 title={t('import.flipAllTitle')}
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium border transition-colors cursor-pointer bg-muted/40 border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium border transition-colors cursor-pointer border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/60"
               >
                 <ArrowLeftRight className="h-3 w-3" />
                 {t('import.flipAll')}
               </button>
+
+              {/* Skip duplicates */}
               {duplicateIndices.size > 0 && (
                 <button
                   type="button"
                   onClick={() => setSkipDuplicates(p => !p)}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium border transition-colors cursor-pointer',
+                    'flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium border transition-colors cursor-pointer',
                     skipDuplicates
                       ? 'bg-warning/10 border-warning/40 text-warning'
-                      : 'bg-muted/40 border-border/50 text-muted-foreground'
+                      : 'border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/60'
                   )}
                 >
                   <SkipForward className="h-3 w-3" />
@@ -416,122 +504,172 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
                 </button>
               )}
             </div>
-          </div>
 
-          <ScrollArea className="h-80 w-full rounded-lg border border-border/50">
-            <div className="min-w-max divide-y divide-border/50">
-              {preview.slice(0, 100).map((row, i) => {
-                const isDup = duplicateIndices.has(i)
-                const rowCategories = categories.filter(c => c.type === (row.isIncome ? 'income' : 'expense'))
-                return (
-                  <div
-                    key={i}
-                    className={cn(
-                      'flex items-start gap-2 px-3 py-2 text-xs',
-                      isDup && skipDuplicates && 'opacity-40 line-through'
-                    )}
-                  >
-                    {/* Date */}
-                    <span className="text-muted-foreground w-28 shrink-0 pt-0.5">
-                      {row.date}{row.time ? ` ${row.time}` : ''}
-                    </span>
+            {/* Table */}
+            <div className="rounded-xl border border-border/50 overflow-hidden">
+              {/* Header */}
+              <div className="grid bg-muted/40 border-b border-border/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                style={{ gridTemplateColumns: '28px 88px 54px 1fr 72px 60px' }}>
+                <span />
+                <span>{t('transactions.date')}</span>
+                <span>{t('transactions.income')}/{t('transactions.expense').slice(0,3)}</span>
+                <span>{t('transactions.description')} / {t('transactions.category')}</span>
+                <span className="text-right">{t('transactions.amount')}</span>
+                <span />
+              </div>
 
-                    {/* Direction toggle button */}
-                    <button
-                      type="button"
-                      onClick={() => flipRow(i)}
-                      title={row.isIncome ? t('transactions.income') : t('transactions.expense')}
-                      className={cn(
-                        'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors cursor-pointer border',
-                        row.isIncome
-                          ? 'bg-success/10 border-success/40 text-success hover:bg-success/20'
-                          : 'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20'
-                      )}
-                    >
-                      {row.isIncome ? '+' : '−'}
-                    </button>
+              <ScrollArea className="h-[340px] w-full">
+                <div className="divide-y divide-border/40">
+                  {preview.slice(0, 100).map((row, i) => {
+                    const isDup = duplicateIndices.has(i)
+                    const isExcluded = excludedIndices.has(i)
+                    const isSkipped = isDup && skipDuplicates
+                    const dimRow = isExcluded || isSkipped
+                    const rowCategories = categories.filter(c => c.type === (row.isIncome ? 'income' : 'expense'))
 
-                    {isDup && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 text-warning border-warning/40">
-                        {t('import.duplicate')}
-                      </Badge>
-                    )}
-
-                    {/* Description + category selector */}
-                    <div className="flex flex-col min-w-0 flex-1 max-w-xs gap-1">
-                      <span className="truncate">{row.description || '—'}</span>
-                      {/* Per-row category select */}
-                      <Select
-                        value={row.mappedCategoryId ?? '__none__'}
-                        onValueChange={v => setRowCategory(i, v === '__none__' ? '' : v)}
+                    return (
+                      <div
+                        key={i}
+                        className={cn(
+                          'grid items-center px-3 py-1.5 text-xs row-hover transition-all duration-150',
+                          dimRow && 'opacity-35',
+                        )}
+                        style={{ gridTemplateColumns: '28px 88px 54px 1fr 72px 60px' }}
                       >
-                        <SelectTrigger className="h-6 text-[10px] px-2 py-0 border-border/40 bg-muted/30 cursor-pointer max-w-[180px]">
-                          <SelectValue placeholder="—" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__" className="text-xs cursor-pointer">—</SelectItem>
-                          {rowCategories.map(cat => (
-                            <SelectItem key={cat.id} value={cat.id} className="text-xs cursor-pointer">
-                              {cat.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        {/* Exclude toggle */}
+                        <button
+                          type="button"
+                          onClick={() => toggleExclude(i)}
+                          aria-label={isExcluded ? t('import.includeRow') : t('import.excludeRow')}
+                          className={cn(
+                            'flex h-5 w-5 items-center justify-center rounded transition-colors cursor-pointer shrink-0',
+                            isExcluded
+                              ? 'text-muted-foreground/40 hover:text-muted-foreground'
+                              : 'text-primary/50 hover:text-destructive'
+                          )}
+                        >
+                          {isExcluded
+                            ? <Eye className="h-3.5 w-3.5" />
+                            : <EyeOff className="h-3.5 w-3.5" />
+                          }
+                        </button>
+
+                        {/* Date */}
+                        <span className={cn('text-muted-foreground tabular-nums', isExcluded && 'line-through')}>
+                          {row.date}{row.time ? <span className="text-muted-foreground/50"> {row.time}</span> : ''}
+                        </span>
+
+                        {/* Direction toggle */}
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => !isExcluded && flipRow(i)}
+                            disabled={isExcluded}
+                            title={row.isIncome ? t('transactions.income') : t('transactions.expense')}
+                            className={cn(
+                              'rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors border',
+                              !isExcluded && 'cursor-pointer',
+                              row.isIncome
+                                ? 'bg-success/10 border-success/30 text-success hover:bg-success/20'
+                                : 'bg-destructive/10 border-destructive/20 text-destructive hover:bg-destructive/20'
+                            )}
+                          >
+                            {row.isIncome ? t('transactions.income').slice(0,3) : t('transactions.expense').slice(0,3)}
+                          </button>
+                        </div>
+
+                        {/* Description + category */}
+                        <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={cn('truncate font-medium', isExcluded && 'line-through text-muted-foreground')}>
+                              {row.description || '—'}
+                            </span>
+                            {isDup && (
+                              <Badge variant="outline" className="shrink-0 text-[9px] px-1 py-0 text-warning border-warning/40 h-4">
+                                {t('import.duplicate')}
+                              </Badge>
+                            )}
+                            {isExcluded && (
+                              <Badge variant="outline" className="shrink-0 text-[9px] px-1 py-0 text-muted-foreground border-border/40 h-4">
+                                {t('import.excluded')}
+                              </Badge>
+                            )}
+                          </div>
+                          <Select
+                            value={row.mappedCategoryId ?? '__none__'}
+                            onValueChange={v => !isExcluded && setRowCategory(i, v === '__none__' ? '' : v)}
+                            disabled={isExcluded}
+                          >
+                            <SelectTrigger className="h-5 text-[10px] px-1.5 py-0 border-border/30 bg-muted/20 cursor-pointer max-w-[200px] rounded-md">
+                              <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__" className="text-xs cursor-pointer">—</SelectItem>
+                              {rowCategories.map(cat => (
+                                <SelectItem key={cat.id} value={cat.id} className="text-xs cursor-pointer">
+                                  {cat.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Amount */}
+                        <span className={cn(
+                          'text-right font-semibold tabular-nums',
+                          row.isIncome ? 'text-success' : 'text-foreground/80'
+                        )}>
+                          {row.isIncome ? '+' : ''}{row.amount.toFixed(2)}
+                        </span>
+
+                        {/* Save as Rule */}
+                        {!isExcluded && (
+                          <SaveRulePopover
+                            description={row.description}
+                            categoryId={row.mappedCategoryId}
+                            direction={row.directionLocked
+                              ? (row.isIncome ? 'income' : 'expense')
+                              : 'auto'}
+                          />
+                        )}
+                      </div>
+                    )
+                  })}
+                  {preview.length > 100 && (
+                    <div className="px-3 py-3 text-xs text-muted-foreground text-center">
+                      …and {preview.length - 100} more rows
                     </div>
-
-                    {/* Amount */}
-                    <span className={cn(
-                      'font-medium tabular-nums shrink-0 pt-0.5',
-                      row.isIncome ? 'text-success' : 'text-foreground'
-                    )}>
-                      {row.amount.toFixed(2)}
-                    </span>
-
-                    {/* Save as Rule */}
-                    <SaveRulePopover
-                      description={row.description}
-                      categoryId={row.mappedCategoryId}
-                      direction={row.directionLocked
-                        ? (row.isIncome ? 'income' : 'expense')
-                        : 'auto'}
-                      className="shrink-0 pt-0.5"
-                    />
-                  </div>
-                )
-              })}
-              {preview.length > 100 && (
-                <div className="px-3 py-2 text-xs text-muted-foreground text-center">
-                  …and {preview.length - 100} more
+                  )}
                 </div>
-              )}
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
 
-          {error && (
-            <div className="flex items-center gap-2 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4" />
-              {error}
+            {error && (
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setStep('map')} className="cursor-pointer">
+                {t('common.back')}
+              </Button>
+              <Button
+                onClick={handleImport}
+                disabled={importing || importCount <= 0}
+                className="cursor-pointer"
+              >
+                <FileUp className="h-4 w-4 mr-1.5" />
+                {importing
+                  ? t('common.loading')
+                  : t('import.importBtn', { count: importCount })}
+              </Button>
             </div>
-          )}
-
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setStep('map')} className="cursor-pointer">
-              {t('common.back')}
-            </Button>
-            <Button
-              onClick={handleImport}
-              disabled={importing || (skipDuplicates && duplicateIndices.size === preview.length)}
-              className="cursor-pointer"
-            >
-              <FileUp className="h-4 w-4 mr-1.5" />
-              {importing
-                ? t('common.loading')
-                : t('import.importBtn', { count: skipDuplicates ? preview.length - duplicateIndices.size : preview.length })}
-            </Button>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {step === 'done' && (
         <div className="flex flex-col items-center py-8">

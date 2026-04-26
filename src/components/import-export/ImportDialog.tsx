@@ -218,7 +218,7 @@ export function ImportDialog({ open, onOpenChange, onImported }: Props) {
         onOpenChange(isOpen)
       }}
       title={t('import.title')}
-      className="max-w-2xl"
+      className="max-w-2xl sm:max-w-3xl"
     >
       {step === 'upload' && (
         <div className="space-y-4">
